@@ -6,6 +6,10 @@ import {
 	useState,
 } from "react";
 
+import type {
+	CarouselPageChangeEvent,
+	CarouselPageChangeSource,
+} from "../types";
 import { clamp } from "../utils/geometry";
 
 /** Inputs to {@link useCarouselPage}. */
@@ -17,7 +21,7 @@ export interface UseCarouselPageOptions {
 	/** Current total, used to clamp both modes into range. */
 	pageCount: number;
 	/** Notified once per actual change. */
-	onPageChanged?: (page: number) => void;
+	onPageChanged?: (page: number, event: CarouselPageChangeEvent) => void;
 }
 
 /** What {@link useCarouselPage} hands back. */
@@ -30,7 +34,7 @@ export interface CarouselPageState {
 	 * Move to a page. Clamps into range, ignores a move onto the current page,
 	 * and returns whether anything actually changed.
 	 */
-	commitPage: (next: number) => boolean;
+	commitPage: (next: number, source: CarouselPageChangeSource) => boolean;
 }
 
 /**
@@ -81,24 +85,33 @@ export function useCarouselPage({
 		onPageChangedRef.current = onPageChanged;
 	});
 
-	const commitPage = useCallback((next: number) => {
-		const target = clamp(
-			Math.floor(next) || 0,
-			0,
-			Math.max(0, pageCountRef.current - 1),
-		);
-		if (target === pageRef.current) {
-			return false;
-		}
-		// Written eagerly so the imperative handle's getter is already right on the
-		// line after `next()`, rather than a render later.
-		pageRef.current = target;
-		if (!isControlledRef.current) {
-			setInternalPage(target);
-		}
-		onPageChangedRef.current?.(target);
-		return true;
-	}, []);
+	const commitPage = useCallback(
+		(next: number, source: CarouselPageChangeSource) => {
+			const target = clamp(
+				Math.floor(next) || 0,
+				0,
+				Math.max(0, pageCountRef.current - 1),
+			);
+			const previousPage = pageRef.current;
+			if (target === previousPage) {
+				return false;
+			}
+			// Written eagerly so the imperative handle's getter is already right on
+			// the line after `next()`, rather than a render later.
+			pageRef.current = target;
+			if (!isControlledRef.current) {
+				setInternalPage(target);
+			}
+			onPageChangedRef.current?.(target, {
+				page: target,
+				previousPage,
+				source,
+				userInitiated: source !== "autoplay",
+			});
+			return true;
+		},
+		[],
+	);
 
 	return { page, pageRef, commitPage };
 }

@@ -88,6 +88,68 @@ export interface CarouselActions {
 /** Value handed to consumers by {@link useCarousel}. */
 export type CarouselContextValue = CarouselState & CarouselActions;
 
+// ─── Events ────────────────────────────────────────────────────────────────────
+
+/**
+ * What kind of interaction moved the carousel to a new page.
+ *
+ * - `'drag'` — a swipe, flick, or free scroll (touch, trackpad, mouse wheel).
+ * - `'next'` / `'previous'` — {@link CarouselActions.next} / {@link CarouselActions.previous},
+ *   which is what the built-in `Arrow` slots and the keyboard arrow keys call.
+ * - `'pagination'` — {@link CarouselActions.goTo} / {@link CarouselActions.goToSlide}, which is
+ *   what the built-in `Dot` and `Pagination` slots and the keyboard Home/End keys call.
+ * - `'autoplay'` — an automatic `autoPlay` tick.
+ * - `'imperative'` — a call made through the {@link CarouselHandle} `ref`, from outside the
+ *   carousel's own chrome.
+ */
+export type CarouselPageChangeSource =
+	| "drag"
+	| "next"
+	| "previous"
+	| "pagination"
+	| "autoplay"
+	| "imperative";
+
+/** Detail handed to {@link CarouselProps.onPageChanged} alongside the new page. */
+export interface CarouselPageChangeEvent {
+	/** The page the carousel just moved to — the same value as the callback's first argument. */
+	page: number;
+	/** The page it moved from. */
+	previousPage: number;
+	/** What triggered the move. */
+	source: CarouselPageChangeSource;
+	/**
+	 * Whether a person caused this change, as opposed to the `autoPlay` timer.
+	 * Shorthand for `source !== 'autoplay'` — check `source` directly for anything
+	 * more specific, such as telling a drag apart from a button press.
+	 *
+	 * @example Consumer-defined haptic feedback, without the carousel depending on a haptics library
+	 * ```ts
+	 * onPageChanged={(page, event) => {
+	 *   if (event.userInitiated) {
+	 *     Haptics.selectionAsync();
+	 *   }
+	 * }}
+	 * ```
+	 */
+	userInitiated: boolean;
+}
+
+/** Detail handed to {@link CarouselProps.onProgress} on every scroll frame. */
+export interface CarouselProgressEvent {
+	/** Nearest page to the current scroll position. */
+	page: number;
+	/**
+	 * Continuous position in page units — `page` plus the fraction of the way to
+	 * a neighbour. Whole while at rest, moving fractionally through
+	 * `page - 1 .. page + 1` while scrolling. Direction-agnostic, the same way
+	 * page indices are everywhere else in this library.
+	 */
+	absoluteProgress: number;
+	/** Raw scroll offset in dp, in the same direction-agnostic coordinates. */
+	offset: number;
+}
+
 /**
  * Imperative handle reached through `ref`.
  *
@@ -237,6 +299,33 @@ export type CarouselRenderItem<TItem> = (
 	info: CarouselRenderItemInfo<TItem>,
 ) => ReactElement | null;
 
+// ─── Slide state ────────────────────────────────────────────────────────────────
+
+/** Value handed back by {@link useCarouselSlide}. */
+export interface CarouselSlideState {
+	/** The index passed to the hook, echoed back for convenience when passing this object along. */
+	index: number;
+	/** Whether this slide's page is the current one. */
+	isActive: boolean;
+	/**
+	 * Whether any part of this slide is on screen — `isActive`, plus a
+	 * neighbouring slide peeking in at the edge when `peek` is set.
+	 */
+	isVisible: boolean;
+	/**
+	 * Distance from being active, in page units: `0` when active, growing
+	 * towards `±1` as the carousel scrolls it off towards a neighbouring page,
+	 * and pinned at `±1` beyond that. Drive scale, opacity or parallax from it
+	 * without pulling in an animation library.
+	 *
+	 * Updates on every scroll frame *while within one page of active* — read it
+	 * only where you intend to re-render at that rate. A slide more than a page
+	 * away is pinned at `±1` and does not re-render on every frame just because
+	 * some other slide is being dragged into view.
+	 */
+	progress: number;
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 /**
@@ -318,8 +407,23 @@ export interface CarouselProps<TItem = unknown> {
 	 * @default 0
 	 */
 	defaultPage?: number;
-	/** Called once per actual page change — never for a page you are already on. */
-	onPageChanged?: (page: number) => void;
+	/**
+	 * Called once per actual page change — never for a page you are already on.
+	 *
+	 * The second argument says *why* the page changed — a drag, a button, an
+	 * `autoPlay` tick, a ref call — so a consumer can play a sound, fire
+	 * analytics, or trigger haptic feedback without the carousel depending on
+	 * any of those itself.
+	 *
+	 * ```ts
+	 * onPageChanged={(page, event) => {
+	 *   if (event.userInitiated) {
+	 *     Haptics.selectionAsync();
+	 *   }
+	 * }}
+	 * ```
+	 */
+	onPageChanged?: (page: number, event: CarouselPageChangeEvent) => void;
 
 	// ── Auto-play ──
 	/**
@@ -391,6 +495,12 @@ export interface CarouselProps<TItem = unknown> {
 	 * Recompute `isActive` for every slide on each page change. Off by default
 	 * because it defeats slide memoization; turn it on only when your slides
 	 * really do look different when active.
+	 *
+	 * {@link useCarouselSlide} is usually the better fit for this: it reads
+	 * `isActive` (and `isVisible`, `progress`) from inside one slide through a
+	 * subscription, so only that slide re-renders rather than the whole list —
+	 * `trackActiveSlides` stays for `renderItem`'s synchronous `isActive`, which
+	 * some virtualization patterns need at render time rather than as an effect.
 	 * @default false
 	 */
 	trackActiveSlides?: boolean;
@@ -398,6 +508,25 @@ export interface CarouselProps<TItem = unknown> {
 	onDragStart?: () => void;
 	/** Called when the user lets go of the track. */
 	onDragEnd?: () => void;
+	/**
+	 * Called when the track starts animating towards a resting page — a
+	 * released drag settling, or a `next` / `previous` / `goTo` / `autoPlay` /
+	 * imperative move starting its scroll. Pairs with {@link CarouselProps.onSnapEnd}.
+	 */
+	onSnapStart?: () => void;
+	/** Called once the track comes to rest on a page. Pairs with {@link CarouselProps.onSnapStart}. */
+	onSnapEnd?: () => void;
+	/**
+	 * Called on every scroll frame with the raw position, for building custom
+	 * animations — indicators, parallax, opacity, scale — without the carousel
+	 * depending on an animation library. Fires during drags, flings and
+	 * animated programmatic moves alike.
+	 *
+	 * Called directly from the scroll handler rather than through state, so it
+	 * never causes the carousel (or anything else) to re-render — drive your
+	 * own `Animated.Value`, state, or ref from it.
+	 */
+	onProgress?: (event: CarouselProgressEvent) => void;
 	/**
 	 * `testID` for the carousel's outer view. The scrollable track gets
 	 * `` `${testID}-track` `` so tests and e2e specs can drive the scroller

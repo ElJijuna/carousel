@@ -11,6 +11,7 @@
 
 export { Carousel } from "./Carousel";
 export { useCarousel, useCarouselOptional } from "./CarouselContext";
+export { useCarouselSlide } from "./CarouselSlideContext";
 export type {
 	CarouselActions,
 	CarouselArrowSlotProps,
@@ -19,11 +20,15 @@ export type {
 	CarouselDotSlotProps,
 	CarouselHandle,
 	CarouselNavigateOptions,
+	CarouselPageChangeEvent,
+	CarouselPageChangeSource,
 	CarouselPaginationSlotProps,
 	CarouselPlayPauseSlotProps,
+	CarouselProgressEvent,
 	CarouselProps,
 	CarouselRenderItem,
 	CarouselRenderItemInfo,
+	CarouselSlideState,
 	CarouselSlotLayout,
 	CarouselState,
 	ResponsiveMap,

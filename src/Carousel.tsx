@@ -24,16 +24,20 @@ import {
 } from "react-native";
 
 import { CarouselProvider } from "./CarouselContext";
+import { SlideStoreProvider } from "./CarouselSlideContext";
 import { useAutoPlay } from "./hooks/useAutoPlay";
 import { useCarouselMetrics } from "./hooks/useCarouselMetrics";
 import { useCarouselPage } from "./hooks/useCarouselPage";
 import { useCarouselScroll } from "./hooks/useCarouselScroll";
 import { useReducedMotion } from "./hooks/useReducedMotion";
+import { useSlideStore } from "./hooks/useSlideStore";
 import type {
 	CarouselComponents,
 	CarouselContextValue,
 	CarouselHandle,
 	CarouselNavigateOptions,
+	CarouselPageChangeSource,
+	CarouselProgressEvent,
 	CarouselProps,
 	CarouselSlotLayout,
 } from "./types";
@@ -189,6 +193,9 @@ function CarouselImpl<TItem>(
 		trackActiveSlides = false,
 		onDragStart,
 		onDragEnd,
+		onSnapStart,
+		onSnapEnd,
+		onProgress,
 		testID,
 	} = props;
 
@@ -225,6 +232,34 @@ function CarouselImpl<TItem>(
 		onPageChanged,
 	});
 
+	const slideStore = useSlideStore();
+	const hasPeek = resolvedPeek > 0;
+
+	// Keeps `useCarouselSlide` in sync with a page or layout change that did not
+	// come with a scroll event of its own — an external `page` jump, or a
+	// responsive `visibleSlides` breakpoint change.
+	useEffect(() => {
+		slideStore.update({
+			page,
+			visibleSlides: visible,
+			absoluteProgress: page,
+			hasPeek,
+		});
+	}, [slideStore, page, visible, hasPeek]);
+
+	const handleProgress = useCallback(
+		(event: CarouselProgressEvent) => {
+			slideStore.update({
+				page: event.page,
+				visibleSlides: visible,
+				absoluteProgress: event.absoluteProgress,
+				hasPeek,
+			});
+			onProgress?.(event);
+		},
+		[slideStore, visible, hasPeek, onProgress],
+	);
+
 	const bridge = useCarouselScroll({
 		geometry,
 		page,
@@ -232,6 +267,9 @@ function CarouselImpl<TItem>(
 		commitPage,
 		rtl,
 		reducedMotion,
+		onProgress: handleProgress,
+		onSnapStart,
+		onSnapEnd,
 	});
 	const { applyTarget, attachScroller } = bridge;
 
@@ -244,40 +282,78 @@ function CarouselImpl<TItem>(
 			delta: number,
 			options: CarouselNavigateOptions | undefined,
 			allowWrap: boolean,
+			source: CarouselPageChangeSource,
 		) => {
 			const target = stepTarget(pageRef.current, delta, geometry, allowWrap);
 			if (target) {
-				applyTarget(target, options?.animated ?? true);
+				applyTarget(target, options?.animated ?? true, source);
 			}
 		},
 		[geometry, applyTarget, pageRef],
 	);
 
 	const next = useCallback(
-		(options?: CarouselNavigateOptions) => navigate(1, options, wraps),
+		(options?: CarouselNavigateOptions) => navigate(1, options, wraps, "next"),
 		[navigate, wraps],
 	);
 	const previous = useCallback(
-		(options?: CarouselNavigateOptions) => navigate(-1, options, wraps),
+		(options?: CarouselNavigateOptions) =>
+			navigate(-1, options, wraps, "previous"),
 		[navigate, wraps],
 	);
 	const goTo = useCallback(
-		(target: number, options?: CarouselNavigateOptions) => {
-			applyTarget(goToTarget(target, geometry), options?.animated ?? true);
+		(
+			target: number,
+			options?: CarouselNavigateOptions,
+			source: CarouselPageChangeSource = "pagination",
+		) => {
+			applyTarget(
+				goToTarget(target, geometry),
+				options?.animated ?? true,
+				source,
+			);
 		},
 		[applyTarget, geometry],
 	);
 	const goToSlide = useCallback(
-		(slide: number, options?: CarouselNavigateOptions) => {
-			goTo(pageForSlide(slide, geometry, slideCount), options);
+		(
+			slide: number,
+			options?: CarouselNavigateOptions,
+			source: CarouselPageChangeSource = "pagination",
+		) => {
+			goTo(pageForSlide(slide, geometry, slideCount), options, source);
 		},
 		[goTo, geometry, slideCount],
+	);
+
+	// The `ref` handle is a distinct call site from the chrome/context actions
+	// above, so it is the one place that can honestly say a move came from
+	// outside the carousel's own rendering — "imperative" as in `useImperativeHandle`.
+	const imperativeNext = useCallback(
+		(options?: CarouselNavigateOptions) =>
+			navigate(1, options, wraps, "imperative"),
+		[navigate, wraps],
+	);
+	const imperativePrevious = useCallback(
+		(options?: CarouselNavigateOptions) =>
+			navigate(-1, options, wraps, "imperative"),
+		[navigate, wraps],
+	);
+	const imperativeGoTo = useCallback(
+		(target: number, options?: CarouselNavigateOptions) =>
+			goTo(target, options, "imperative"),
+		[goTo],
+	);
+	const imperativeGoToSlide = useCallback(
+		(slide: number, options?: CarouselNavigateOptions) =>
+			goToSlide(slide, options, "imperative"),
+		[goToSlide],
 	);
 
 	// Rotation always wraps, even without `loop`: a deck that silently stops on
 	// the last slide reads as broken rather than finished.
 	const handleTick = useCallback(
-		() => navigate(1, undefined, true),
+		() => navigate(1, undefined, true, "autoplay"),
 		[navigate],
 	);
 	const { isPlaying, play, pause } = useAutoPlay({
@@ -299,10 +375,10 @@ function CarouselImpl<TItem>(
 	useImperativeHandle(
 		ref,
 		() => ({
-			next,
-			previous,
-			goTo,
-			goToSlide,
+			next: imperativeNext,
+			previous: imperativePrevious,
+			goTo: imperativeGoTo,
+			goToSlide: imperativeGoToSlide,
 			play,
 			pause,
 			// Getters rather than a frozen snapshot, so a read taken on the line
@@ -317,7 +393,15 @@ function CarouselImpl<TItem>(
 				return isPlayingRef.current;
 			},
 		}),
-		[next, previous, goTo, goToSlide, play, pause, pageRef],
+		[
+			imperativeNext,
+			imperativePrevious,
+			imperativeGoTo,
+			imperativeGoToSlide,
+			play,
+			pause,
+			pageRef,
+		],
 	);
 
 	// ── Screen-reader announcements ─────────────────────────────────────────────
@@ -712,7 +796,7 @@ function CarouselImpl<TItem>(
 				{at("above")(playPauseNode, playPausePosition)}
 
 				<View style={styles.trackWrapper}>
-					{track}
+					<SlideStoreProvider value={slideStore}>{track}</SlideStoreProvider>
 					{at("overlay")(arrowsNode, arrowsPosition)}
 					{at("overlay")(paginationNode, paginationPosition)}
 					{at("overlay")(playPauseNode, playPausePosition)}

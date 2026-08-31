@@ -1,9 +1,10 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { createRef } from "react";
+import { createRef, memo } from "react";
 import { AccessibilityInfo, Pressable, Text, View } from "react-native";
 
 import { Carousel } from "./Carousel";
 import { useCarousel } from "./CarouselContext";
+import { useCarouselSlide } from "./CarouselSlideContext";
 import type {
 	CarouselArrowSlotProps,
 	CarouselDotSlotProps,
@@ -188,7 +189,15 @@ describe("dots", () => {
 
 		await fireEvent.press(screen.getByTestId("dot-2"));
 
-		expect(onPageChanged).toHaveBeenCalledWith(2);
+		expect(onPageChanged).toHaveBeenCalledWith(
+			2,
+			expect.objectContaining({
+				page: 2,
+				previousPage: 0,
+				source: "pagination",
+				userInitiated: true,
+			}),
+		);
 		expect(screen.getByText("[2]")).toBeTruthy();
 	});
 
@@ -251,10 +260,16 @@ describe("arrows", () => {
 		await layout();
 
 		await fireEvent.press(screen.getByTestId("arrow-next"));
-		expect(onPageChanged).toHaveBeenLastCalledWith(1);
+		expect(onPageChanged).toHaveBeenLastCalledWith(
+			1,
+			expect.objectContaining({ previousPage: 0, source: "next" }),
+		);
 
 		await fireEvent.press(screen.getByTestId("arrow-previous"));
-		expect(onPageChanged).toHaveBeenLastCalledWith(0);
+		expect(onPageChanged).toHaveBeenLastCalledWith(
+			0,
+			expect.objectContaining({ previousPage: 1, source: "previous" }),
+		);
 	});
 
 	it("goes disabled at the ends rather than disappearing", async () => {
@@ -375,7 +390,10 @@ describe("paging", () => {
 
 		await fireEvent.press(screen.getByTestId("arrow-previous"));
 
-		expect(onPageChanged).toHaveBeenCalledWith(2);
+		expect(onPageChanged).toHaveBeenCalledWith(
+			2,
+			expect.objectContaining({ previousPage: 0, source: "previous" }),
+		);
 	});
 
 	it("starts on defaultPage", async () => {
@@ -404,7 +422,10 @@ describe("paging", () => {
 
 		await settleAt(2 * WIDTH);
 
-		expect(onPageChanged).toHaveBeenCalledWith(2);
+		expect(onPageChanged).toHaveBeenCalledWith(
+			2,
+			expect.objectContaining({ previousPage: 0, source: "drag" }),
+		);
 		expect(screen.getByText("[2]")).toBeTruthy();
 	});
 
@@ -425,7 +446,10 @@ describe("paging", () => {
 		}
 
 		expect(onPageChanged).toHaveBeenCalledTimes(1);
-		expect(onPageChanged).toHaveBeenCalledWith(1);
+		expect(onPageChanged).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({ previousPage: 0, source: "drag" }),
+		);
 	});
 });
 
@@ -450,7 +474,10 @@ describe("controlled mode", () => {
 
 		await fireEvent.press(screen.getByTestId("arrow-next"));
 
-		expect(onPageChanged).toHaveBeenCalledWith(2);
+		expect(onPageChanged).toHaveBeenCalledWith(
+			2,
+			expect.objectContaining({ previousPage: 1, source: "next" }),
+		);
 		// The prop is the source of truth and the parent ignored the callback.
 		expect(screen.getByText("[1]")).toBeTruthy();
 	});
@@ -507,6 +534,46 @@ describe("imperative handle", () => {
 			ref.current?.goTo(4);
 		});
 		expect(screen.getByText("[4]")).toBeTruthy();
+	});
+
+	it("reports ref-driven moves with source 'imperative', distinct from chrome", async () => {
+		const ref = createRef<CarouselHandle>();
+		const onPageChanged = jest.fn();
+		await render(
+			<Carousel
+				testID="c"
+				ref={ref}
+				onPageChanged={onPageChanged}
+				components={{ Dot: MockDot, Arrow: MockArrow }}
+			>
+				{slides(6)}
+			</Carousel>,
+		);
+		await layout();
+
+		await act(async () => {
+			ref.current?.next();
+		});
+		expect(onPageChanged).toHaveBeenLastCalledWith(
+			1,
+			expect.objectContaining({ source: "imperative", userInitiated: true }),
+		);
+
+		await act(async () => {
+			ref.current?.goTo(3);
+		});
+		expect(onPageChanged).toHaveBeenLastCalledWith(
+			3,
+			expect.objectContaining({ source: "imperative" }),
+		);
+
+		// The same underlying action taken through the rendered chrome instead
+		// reports its own, more specific source.
+		await fireEvent.press(screen.getByTestId("dot-0"));
+		expect(onPageChanged).toHaveBeenLastCalledWith(
+			0,
+			expect.objectContaining({ source: "pagination" }),
+		);
 	});
 
 	it("reads its getters back without waiting for a render", async () => {
@@ -592,7 +659,14 @@ describe("autoPlay", () => {
 			jest.advanceTimersByTime(1000);
 		});
 
-		expect(onPageChanged).toHaveBeenCalledWith(1);
+		expect(onPageChanged).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({
+				previousPage: 0,
+				source: "autoplay",
+				userInitiated: false,
+			}),
+		);
 	});
 
 	it("wraps at the end even without loop, rather than stalling", async () => {
@@ -614,7 +688,10 @@ describe("autoPlay", () => {
 			jest.advanceTimersByTime(1000);
 		});
 
-		expect(onPageChanged).toHaveBeenCalledWith(0);
+		expect(onPageChanged).toHaveBeenCalledWith(
+			0,
+			expect.objectContaining({ previousPage: 2, source: "autoplay" }),
+		);
 	});
 
 	it("renders a play/pause control that actually stops it", async () => {
@@ -777,7 +854,10 @@ describe("data mode", () => {
 
 		await fireEvent.press(screen.getByTestId("arrow-next"));
 
-		expect(onPageChanged).toHaveBeenCalledWith(1);
+		expect(onPageChanged).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({ previousPage: 0, source: "next" }),
+		);
 	});
 
 	it("hands renderItem the slide width", async () => {
@@ -914,7 +994,10 @@ describe("infinite", () => {
 
 		await fireEvent.press(screen.getByTestId("arrow-next"));
 
-		expect(onPageChanged).toHaveBeenCalledWith(0);
+		expect(onPageChanged).toHaveBeenCalledWith(
+			0,
+			expect.objectContaining({ previousPage: 2, source: "next" }),
+		);
 	});
 });
 
@@ -1119,5 +1202,254 @@ describe("slot placement", () => {
 		await layout();
 
 		expect(screen.getAllByTestId(/^dot-/)).toHaveLength(3);
+	});
+});
+
+// ─── Snap lifecycle ───────────────────────────────────────────────────────────
+
+describe("snap lifecycle", () => {
+	beforeEach(() => {
+		jest.useFakeTimers();
+	});
+	afterEach(() => {
+		jest.useRealTimers();
+	});
+
+	it("fires onSnapStart then onSnapEnd around a drag that settles", async () => {
+		const onSnapStart = jest.fn();
+		const onSnapEnd = jest.fn();
+		await render(
+			<Carousel testID="c" onSnapStart={onSnapStart} onSnapEnd={onSnapEnd}>
+				{slides(4)}
+			</Carousel>,
+		);
+		await layout();
+
+		const track = screen.getByTestId("c-track");
+		await fireEvent(track, "scrollBeginDrag", {
+			nativeEvent: { contentOffset: { x: 0, y: 0 } },
+		});
+		expect(onSnapStart).not.toHaveBeenCalled();
+		expect(onSnapEnd).not.toHaveBeenCalled();
+
+		// The finger lets go: the track is now settling on its own.
+		await fireEvent(track, "scrollEndDrag", {
+			nativeEvent: { contentOffset: { x: 250, y: 0 } },
+		});
+		expect(onSnapStart).toHaveBeenCalledTimes(1);
+		expect(onSnapEnd).not.toHaveBeenCalled();
+
+		await settleAt(300);
+		expect(onSnapEnd).toHaveBeenCalledTimes(1);
+	});
+
+	it("fires around a button-driven page change too", async () => {
+		const onSnapStart = jest.fn();
+		const onSnapEnd = jest.fn();
+		await render(
+			<Carousel
+				testID="c"
+				onSnapStart={onSnapStart}
+				onSnapEnd={onSnapEnd}
+				components={{ Arrow: MockArrow }}
+			>
+				{slides(4)}
+			</Carousel>,
+		);
+		await layout();
+
+		await fireEvent.press(screen.getByTestId("arrow-next"));
+		expect(onSnapStart).toHaveBeenCalledTimes(1);
+		expect(onSnapEnd).not.toHaveBeenCalled();
+
+		// The test renderer never fires a real momentum event for a programmatic
+		// `scrollTo`, so the 600ms backstop is what resolves it here.
+		await act(async () => {
+			jest.advanceTimersByTime(600);
+		});
+		expect(onSnapEnd).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not fire onSnapStart again for a second press before the first settles", async () => {
+		const onSnapStart = jest.fn();
+		await render(
+			<Carousel
+				testID="c"
+				onSnapStart={onSnapStart}
+				components={{ Arrow: MockArrow }}
+			>
+				{slides(4)}
+			</Carousel>,
+		);
+		await layout();
+
+		await fireEvent.press(screen.getByTestId("arrow-next"));
+		await fireEvent.press(screen.getByTestId("arrow-next"));
+
+		expect(onSnapStart).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ─── onProgress ───────────────────────────────────────────────────────────────
+
+describe("onProgress", () => {
+	it("reports the raw scroll position on every frame", async () => {
+		const onProgress = jest.fn();
+		await render(
+			<Carousel testID="c" onProgress={onProgress}>
+				{slides(4)}
+			</Carousel>,
+		);
+		await layout();
+
+		await fireEvent.scroll(screen.getByTestId("c-track"), {
+			nativeEvent: { contentOffset: { x: 150, y: 0 } },
+		});
+
+		expect(onProgress).toHaveBeenCalledWith({
+			page: 0,
+			absoluteProgress: 0.5,
+			offset: 150,
+		});
+	});
+
+	it("reports progress for an animated, button-driven move", async () => {
+		const onProgress = jest.fn();
+		await render(
+			<Carousel
+				testID="c"
+				onProgress={onProgress}
+				components={{ Arrow: MockArrow }}
+			>
+				{slides(4)}
+			</Carousel>,
+		);
+		await layout();
+
+		await fireEvent.press(screen.getByTestId("arrow-next"));
+		await fireEvent.scroll(screen.getByTestId("c-track"), {
+			nativeEvent: { contentOffset: { x: 300, y: 0 } },
+		});
+
+		expect(onProgress).toHaveBeenCalledWith({
+			page: 1,
+			absoluteProgress: 1,
+			offset: 300,
+		});
+	});
+
+	it("does not force a Carousel re-render — it is called directly, not through state", async () => {
+		let renders = 0;
+		const Probe = () => {
+			renders += 1;
+			return null;
+		};
+		const onProgress = jest.fn();
+		await render(
+			<Carousel testID="c" onProgress={onProgress}>
+				{slides(4)}
+				<Probe />
+			</Carousel>,
+		);
+		await layout();
+		renders = 0;
+
+		for (const x of [10, 20, 30, 40, 50]) {
+			await fireEvent.scroll(screen.getByTestId("c-track"), {
+				nativeEvent: { contentOffset: { x, y: 0 } },
+			});
+		}
+
+		expect(onProgress).toHaveBeenCalledTimes(5);
+		expect(renders).toBe(0);
+	});
+});
+
+// ─── useCarouselSlide ─────────────────────────────────────────────────────────
+
+describe("useCarouselSlide", () => {
+	// A genuine function component, called from `renderItem` rather than
+	// inlined there — `renderItem` runs inside a class component's render
+	// (`FlatList`'s cell renderer), which is not a legal place to call a hook.
+	const ProbeSlide = ({ index }: { index: number }) => {
+		const slide = useCarouselSlide(index);
+		return (
+			<Text>{`${index}:${slide.isActive}:${slide.progress.toFixed(2)}`}</Text>
+		);
+	};
+
+	it("reports isActive and progress for the slide at its index", async () => {
+		await render(
+			<Carousel testID="c" components={{ Arrow: MockArrow }}>
+				<ProbeSlide index={0} />
+				<ProbeSlide index={1} />
+			</Carousel>,
+		);
+		await layout();
+
+		expect(screen.getByText("0:true:0.00")).toBeTruthy();
+		expect(screen.getByText("1:false:-1.00")).toBeTruthy();
+
+		await fireEvent.press(screen.getByTestId("arrow-next"));
+
+		expect(screen.getByText("1:true:0.00")).toBeTruthy();
+		expect(screen.getByText("0:false:1.00")).toBeTruthy();
+	});
+
+	it("works from renderItem when delegated to a real component", async () => {
+		await render(
+			<Carousel
+				testID="c"
+				data={["a", "b"]}
+				renderItem={({ index }) => <ProbeSlide index={index} />}
+				components={{ Arrow: MockArrow }}
+			/>,
+		);
+		await layout();
+
+		expect(screen.getByText("0:true:0.00")).toBeTruthy();
+	});
+
+	it("does not rerender a memoized slide whose derived state did not change", async () => {
+		const renderSpy = jest.fn();
+		// `React.memo` is what makes this guarantee real: it is what lets a slide
+		// bail out of a re-render triggered by its parent, the same way
+		// `trackActiveSlides` already documents for `renderItem`. The store
+		// underneath `useCarouselSlide` is what then still updates *this*
+		// component when the store's derived value actually changes.
+		const Slide = memo(({ index }: { index: number }) => {
+			const { isActive } = useCarouselSlide(index);
+			renderSpy(index);
+			return <Text>{`${index}:${isActive}`}</Text>;
+		});
+
+		await render(
+			<Carousel testID="c" components={{ Arrow: MockArrow }}>
+				<Slide index={0} />
+				<Slide index={1} />
+				<Slide index={2} />
+				<Slide index={3} />
+			</Carousel>,
+		);
+		await layout();
+		renderSpy.mockClear();
+
+		await fireEvent.press(screen.getByTestId("arrow-next"));
+
+		// Only the two slides whose `isActive` actually flipped re-rendered — not
+		// slides 2 and 3, which stayed inactive throughout.
+		expect(renderSpy.mock.calls.flat().sort()).toEqual([0, 1]);
+	});
+
+	it("throws when called outside a carousel", async () => {
+		const Bad = () => {
+			useCarouselSlide(0);
+			return null;
+		};
+		const spy = jest.spyOn(console, "error").mockImplementation();
+		await expect(render(<Bad />)).rejects.toThrow(
+			/must be called inside a <Carousel>/,
+		);
+		spy.mockRestore();
 	});
 });

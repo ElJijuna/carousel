@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react-native";
 import { createRef } from "react";
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 
+import type { CarouselPageChangeSource } from "../types";
 import { computeGeometry, type GeometryInput } from "../utils/geometry";
 import {
 	type CarouselScroller,
@@ -28,7 +29,7 @@ const scrollEvent = (x: number) =>
 
 interface Harness {
 	scroller: { scrollTo: jest.Mock };
-	commitPage: jest.Mock<boolean, [number]>;
+	commitPage: jest.Mock<boolean, [number, CarouselPageChangeSource]>;
 	pageRef: { current: number };
 }
 
@@ -38,13 +39,15 @@ const setup = async (options: Partial<UseCarouselScrollOptions> = {}) => {
 	pageRef.current = options.page ?? 0;
 
 	// Mirrors the real hook's contract: clamped, fires once, updates the ref.
-	const commitPage = jest.fn((next: number) => {
-		if (next === pageRef.current) {
-			return false;
-		}
-		pageRef.current = next;
-		return true;
-	}) as Harness["commitPage"];
+	const commitPage = jest.fn(
+		(next: number, _source: CarouselPageChangeSource) => {
+			if (next === pageRef.current) {
+				return false;
+			}
+			pageRef.current = next;
+			return true;
+		},
+	) as Harness["commitPage"];
 
 	const initialProps: UseCarouselScrollOptions = {
 		geometry: geometryOf(),
@@ -90,10 +93,10 @@ describe("applyTarget", () => {
 		const { result, scroller, commitPage } = await setup();
 
 		await act(async () => {
-			result.current.applyTarget({ page: 2, unit: 2 }, true);
+			result.current.applyTarget({ page: 2, unit: 2 }, true, "pagination");
 		});
 
-		expect(commitPage).toHaveBeenCalledWith(2);
+		expect(commitPage).toHaveBeenCalledWith(2, "pagination");
 		expect(lastScrollX(scroller)).toEqual({ x: 600, animated: true });
 	});
 
@@ -101,7 +104,7 @@ describe("applyTarget", () => {
 		const { result, scroller } = await setup({ reducedMotion: true });
 
 		await act(async () => {
-			result.current.applyTarget({ page: 1, unit: 1 }, true);
+			result.current.applyTarget({ page: 1, unit: 1 }, true, "pagination");
 		});
 
 		expect(lastScrollX(scroller)?.animated).toBe(false);
@@ -111,7 +114,7 @@ describe("applyTarget", () => {
 		const { result, scroller } = await setup({ rtl: true });
 
 		await act(async () => {
-			result.current.applyTarget({ page: 1, unit: 1 }, false);
+			result.current.applyTarget({ page: 1, unit: 1 }, false, "pagination");
 		});
 
 		// Logical 300 against a maxScroll of 1200 is physical 900.
@@ -122,7 +125,7 @@ describe("applyTarget", () => {
 		const { result, commitPage } = await setup();
 
 		await act(async () => {
-			result.current.applyTarget({ page: 3, unit: 3 }, true);
+			result.current.applyTarget({ page: 3, unit: 3 }, true, "pagination");
 		});
 		commitPage.mockClear();
 
@@ -144,7 +147,7 @@ describe("onScroll", () => {
 			result.current.onScroll(scrollEvent(610));
 		});
 
-		expect(commitPage).toHaveBeenCalledWith(2);
+		expect(commitPage).toHaveBeenCalledWith(2, "drag");
 	});
 
 	it("reads mirrored offsets back for a right-to-left layout", async () => {
@@ -155,7 +158,7 @@ describe("onScroll", () => {
 			result.current.onScroll(scrollEvent(900));
 		});
 
-		expect(commitPage).toHaveBeenCalledWith(1);
+		expect(commitPage).toHaveBeenCalledWith(1, "drag");
 	});
 
 	it("does nothing before the first layout pass", async () => {
@@ -179,7 +182,7 @@ describe("settling", () => {
 			result.current.onMomentumScrollEnd(scrollEvent(900));
 		});
 
-		expect(commitPage).toHaveBeenCalledWith(3);
+		expect(commitPage).toHaveBeenCalledWith(3, "drag");
 	});
 
 	it("settles a slow release that produces no momentum", async () => {
@@ -194,7 +197,7 @@ describe("settling", () => {
 		await act(async () => {
 			jest.advanceTimersByTime(200);
 		});
-		expect(commitPage).toHaveBeenCalledWith(1);
+		expect(commitPage).toHaveBeenCalledWith(1, "drag");
 	});
 
 	it("lets momentum cancel the drag-release timer", async () => {
@@ -214,7 +217,7 @@ describe("settling", () => {
 		const { result, commitPage } = await setup();
 
 		await act(async () => {
-			result.current.applyTarget({ page: 2, unit: 2 }, true);
+			result.current.applyTarget({ page: 2, unit: 2 }, true, "pagination");
 		});
 		commitPage.mockClear();
 
@@ -228,14 +231,14 @@ describe("settling", () => {
 		await act(async () => {
 			result.current.onScroll(scrollEvent(900));
 		});
-		expect(commitPage).toHaveBeenCalledWith(3);
+		expect(commitPage).toHaveBeenCalledWith(3, "drag");
 	});
 
 	it("hands control back to a finger that interrupts a programmatic scroll", async () => {
 		const { result, commitPage } = await setup();
 
 		await act(async () => {
-			result.current.applyTarget({ page: 4, unit: 4 }, true);
+			result.current.applyTarget({ page: 4, unit: 4 }, true, "pagination");
 		});
 		commitPage.mockClear();
 
@@ -244,7 +247,7 @@ describe("settling", () => {
 			result.current.onScroll(scrollEvent(0));
 		});
 
-		expect(commitPage).toHaveBeenCalledWith(0);
+		expect(commitPage).toHaveBeenCalledWith(0, "drag");
 	});
 });
 
@@ -266,7 +269,7 @@ describe("infinite clone handling", () => {
 			result.current.onMomentumScrollEnd(scrollEvent(1200));
 		});
 
-		expect(commitPage).toHaveBeenCalledWith(0);
+		expect(commitPage).toHaveBeenCalledWith(0, "drag");
 		// Real page 0 lives at unit 1, past the leading clone.
 		expect(lastScrollX(scroller)).toEqual({ x: 300, animated: false });
 	});
@@ -281,7 +284,7 @@ describe("infinite clone handling", () => {
 			result.current.onMomentumScrollEnd(scrollEvent(0));
 		});
 
-		expect(commitPage).toHaveBeenCalledWith(2);
+		expect(commitPage).toHaveBeenCalledWith(2, "drag");
 		expect(lastScrollX(scroller)).toEqual({ x: 900, animated: false });
 	});
 
@@ -330,7 +333,7 @@ describe("re-anchoring", () => {
 		const { result, scroller, rerender, initialProps } = await setup();
 
 		await act(async () => {
-			result.current.applyTarget({ page: 1, unit: 1 }, true);
+			result.current.applyTarget({ page: 1, unit: 1 }, true, "pagination");
 		});
 		scroller.scrollTo.mockClear();
 
@@ -355,7 +358,7 @@ describe("re-anchoring", () => {
 
 		// Travel forward through the trailing clone to reach page 0.
 		await act(async () => {
-			result.current.applyTarget({ page: 0, unit: 4 }, true);
+			result.current.applyTarget({ page: 0, unit: 4 }, true, "pagination");
 		});
 		expect(lastScrollX(scroller)?.x).toBe(1200);
 		scroller.scrollTo.mockClear();
@@ -413,7 +416,7 @@ describe("onContentSizeChange", () => {
 
 		// A long animated move — the wrap from the first page to the last.
 		await act(async () => {
-			result.current.applyTarget({ page: 4, unit: 4 }, true);
+			result.current.applyTarget({ page: 4, unit: 4 }, true, "pagination");
 		});
 		expect(lastScrollX(scroller)).toEqual({ x: 1200, animated: true });
 		scroller.scrollTo.mockClear();
@@ -451,7 +454,11 @@ describe("scroller shapes", () => {
 
 		await act(async () => {
 			view.result.current.attachScroller({ scrollToOffset });
-			view.result.current.applyTarget({ page: 1, unit: 1 }, false);
+			view.result.current.applyTarget(
+				{ page: 1, unit: 1 },
+				false,
+				"pagination",
+			);
 		});
 
 		expect(scrollToOffset).toHaveBeenCalledWith({
@@ -478,8 +485,108 @@ describe("scroller shapes", () => {
 
 		await expect(
 			act(async () => {
-				view.result.current.applyTarget({ page: 1, unit: 1 }, true);
+				view.result.current.applyTarget(
+					{ page: 1, unit: 1 },
+					true,
+					"pagination",
+				);
 			}),
 		).resolves.not.toThrow();
+	});
+});
+
+describe("onProgress", () => {
+	it("reports the raw position on every scroll frame, even while programmatic", async () => {
+		const onProgress = jest.fn();
+		const { result } = await setup({ onProgress });
+
+		await act(async () => {
+			result.current.applyTarget({ page: 2, unit: 2 }, true, "pagination");
+			result.current.onScroll(scrollEvent(525));
+		});
+
+		expect(onProgress).toHaveBeenCalledWith({
+			page: 2,
+			absoluteProgress: 1.75,
+			offset: 525,
+		});
+	});
+
+	it("does nothing before the first layout pass", async () => {
+		const onProgress = jest.fn();
+		const { result } = await setup({
+			onProgress,
+			geometry: geometryOf({ containerWidth: 0 }),
+		});
+
+		await act(async () => {
+			result.current.onScroll(scrollEvent(100));
+		});
+
+		expect(onProgress).not.toHaveBeenCalled();
+	});
+});
+
+describe("snap lifecycle", () => {
+	it("fires onSnapStart once a drag is released, and onSnapEnd once it settles", async () => {
+		const onSnapStart = jest.fn();
+		const onSnapEnd = jest.fn();
+		const { result } = await setup({ onSnapStart, onSnapEnd });
+
+		await act(async () => {
+			result.current.onScrollBeginDrag();
+		});
+		expect(onSnapStart).not.toHaveBeenCalled();
+
+		await act(async () => {
+			result.current.onScrollEndDrag(scrollEvent(150));
+		});
+		expect(onSnapStart).toHaveBeenCalledTimes(1);
+		expect(onSnapEnd).not.toHaveBeenCalled();
+
+		await act(async () => {
+			jest.advanceTimersByTime(200);
+		});
+		expect(onSnapEnd).toHaveBeenCalledTimes(1);
+	});
+
+	it("fires around a programmatic move, resolved by momentum end", async () => {
+		const onSnapStart = jest.fn();
+		const onSnapEnd = jest.fn();
+		const { result } = await setup({ onSnapStart, onSnapEnd });
+
+		await act(async () => {
+			result.current.applyTarget({ page: 1, unit: 1 }, true, "next");
+		});
+		expect(onSnapStart).toHaveBeenCalledTimes(1);
+
+		await act(async () => {
+			result.current.onMomentumScrollEnd(scrollEvent(300));
+		});
+		expect(onSnapEnd).toHaveBeenCalledTimes(1);
+	});
+
+	it("falls back to the 600ms backstop when momentum never arrives", async () => {
+		const onSnapEnd = jest.fn();
+		const { result } = await setup({ onSnapEnd });
+
+		await act(async () => {
+			result.current.applyTarget({ page: 1, unit: 1 }, true, "next");
+			jest.advanceTimersByTime(600);
+		});
+
+		expect(onSnapEnd).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not fire onSnapStart twice for a retarget before the first settles", async () => {
+		const onSnapStart = jest.fn();
+		const { result } = await setup({ onSnapStart });
+
+		await act(async () => {
+			result.current.applyTarget({ page: 1, unit: 1 }, true, "next");
+			result.current.applyTarget({ page: 2, unit: 2 }, true, "next");
+		});
+
+		expect(onSnapStart).toHaveBeenCalledTimes(1);
 	});
 });

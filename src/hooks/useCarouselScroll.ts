@@ -1,6 +1,7 @@
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 
+import type { CarouselPageChangeSource, CarouselProgressEvent } from "../types";
 import {
 	type Geometry,
 	mirrorOffset,
@@ -44,11 +45,17 @@ export interface UseCarouselScrollOptions {
 	/** Live view of the current page, from `useCarouselPage`. */
 	pageRef: RefObject<number>;
 	/** Commit a page; returns whether it changed. */
-	commitPage: (page: number) => boolean;
+	commitPage: (page: number, source: CarouselPageChangeSource) => boolean;
 	/** Whether the layout direction is right-to-left. */
 	rtl: boolean;
 	/** Whether the user asked for reduced motion. */
 	reducedMotion: boolean;
+	/** Raw scroll position, reported on every frame. Kept in a ref, need not be stable. */
+	onProgress?: (event: CarouselProgressEvent) => void;
+	/** A settle towards a resting page has begun. Kept in a ref, need not be stable. */
+	onSnapStart?: () => void;
+	/** The track has come to rest on a page. Kept in a ref, need not be stable. */
+	onSnapEnd?: () => void;
 }
 
 /** The scroll bridge handed back by {@link useCarouselScroll}. */
@@ -59,7 +66,11 @@ export interface CarouselScrollBridge {
 	 */
 	attachScroller: (instance: CarouselScroller | null) => void;
 	/** Commit a navigation target and scroll to it. */
-	applyTarget: (target: NavigationTarget, animated: boolean) => void;
+	applyTarget: (
+		target: NavigationTarget,
+		animated: boolean,
+		source: CarouselPageChangeSource,
+	) => void;
 	/** Scroll handler — attach with `scrollEventThrottle={16}`. */
 	onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 	/** Momentum handlers, which drive the settle. */
@@ -86,8 +97,23 @@ export function useCarouselScroll({
 	commitPage,
 	rtl,
 	reducedMotion,
+	onProgress,
+	onSnapStart,
+	onSnapEnd,
 }: UseCarouselScrollOptions): CarouselScrollBridge {
 	const scrollerRef = useRef<CarouselScroller | null>(null);
+	const onProgressRef = useRef(onProgress);
+	const onSnapStartRef = useRef(onSnapStart);
+	const onSnapEndRef = useRef(onSnapEnd);
+	useEffect(() => {
+		onProgressRef.current = onProgress;
+		onSnapStartRef.current = onSnapStart;
+		onSnapEndRef.current = onSnapEnd;
+	});
+	/** Guards `onSnapStart` / `onSnapEnd` against firing more than once per settle. */
+	const snapActiveRef = useRef(false);
+	/** The source of the programmatic move currently in flight, for `settle()` to report. */
+	const activeSourceRef = useRef<CarouselPageChangeSource>("drag");
 	/** Last known offset, in logical (direction-agnostic) coordinates. */
 	const currentOffsetRef = useRef(0);
 	/** Suppresses page commits for offsets we are merely scrolling *through*. */
@@ -141,16 +167,35 @@ export function useCarouselScroll({
 		[geometry, rtl],
 	);
 
+	/** Fires `onSnapStart` at most once per settle cycle. */
+	const beginSnap = useCallback(() => {
+		if (snapActiveRef.current) {
+			return;
+		}
+		snapActiveRef.current = true;
+		onSnapStartRef.current?.();
+	}, []);
+
+	/** Fires `onSnapEnd`, pairing whichever `beginSnap` call started this cycle. */
+	const endSnap = useCallback(() => {
+		if (!snapActiveRef.current) {
+			return;
+		}
+		snapActiveRef.current = false;
+		onSnapEndRef.current?.();
+	}, []);
+
 	const settle = useCallback(() => {
 		programmaticRef.current = false;
 		programmaticTargetRef.current = null;
 		clearTimeout(programmaticTimerRef.current);
 		clearTimeout(dragSettleTimerRef.current);
 		if (geometry.pageStride <= 0) {
+			endSnap();
 			return;
 		}
 		const resolved = pageFromOffset(currentOffsetRef.current, geometry);
-		commitPage(resolved.page);
+		commitPage(resolved.page, activeSourceRef.current);
 		lastAppliedPageRef.current = resolved.page;
 		if (resolved.onClone) {
 			// We are parked on a copy. Hop to the real page it duplicates without
@@ -158,11 +203,18 @@ export function useCarouselScroll({
 			// is what makes the *next* swipe in the same direction keep going.
 			scrollToLogical(offsetForPage(resolved.page, geometry), false);
 		}
-	}, [geometry, commitPage, scrollToLogical]);
+		endSnap();
+	}, [geometry, commitPage, scrollToLogical, endSnap]);
 
 	const applyTarget = useCallback(
-		(target: NavigationTarget, animated: boolean) => {
-			commitPage(target.page);
+		(
+			target: NavigationTarget,
+			animated: boolean,
+			source: CarouselPageChangeSource,
+		) => {
+			activeSourceRef.current = source;
+			beginSnap();
+			commitPage(target.page, source);
 			lastAppliedPageRef.current = target.page;
 
 			programmaticRef.current = true;
@@ -174,7 +226,7 @@ export function useCarouselScroll({
 			programmaticTargetRef.current = { offset, animated: withAnimation };
 			scrollToLogical(offset, withAnimation);
 		},
-		[commitPage, settle, scrollToLogical, geometry, reducedMotion],
+		[commitPage, settle, scrollToLogical, geometry, reducedMotion, beginSnap],
 	);
 
 	const onScroll = useCallback(
@@ -185,6 +237,16 @@ export function useCarouselScroll({
 				rtl,
 			);
 			currentOffsetRef.current = logical;
+
+			if (geometry.pageStride > 0 && onProgressRef.current) {
+				const unit = logical / geometry.pageStride;
+				onProgressRef.current({
+					page: pageFromOffset(logical, geometry).page,
+					absoluteProgress: unit - geometry.leadUnits,
+					offset: logical,
+				});
+			}
+
 			if (programmaticRef.current || geometry.pageStride <= 0) {
 				return;
 			}
@@ -192,7 +254,7 @@ export function useCarouselScroll({
 			// this down to real transitions, so the per-frame scroll events cost one
 			// comparison each rather than a render.
 			const { page: next } = pageFromOffset(logical, geometry);
-			if (commitPage(next)) {
+			if (commitPage(next, "drag")) {
 				lastAppliedPageRef.current = next;
 			}
 		},
@@ -201,7 +263,10 @@ export function useCarouselScroll({
 
 	const onMomentumScrollBegin = useCallback(() => {
 		clearTimeout(dragSettleTimerRef.current);
-	}, []);
+		// Covers a fling with no preceding `onScrollEndDrag` — a mouse-wheel or
+		// trackpad scroll on web, which never fires a drag gesture at all.
+		beginSnap();
+	}, [beginSnap]);
 
 	const onMomentumScrollEnd = useCallback(
 		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -221,6 +286,7 @@ export function useCarouselScroll({
 		// A finger beats any programmatic scroll still in flight.
 		programmaticRef.current = false;
 		clearTimeout(programmaticTimerRef.current);
+		activeSourceRef.current = "drag";
 	}, []);
 
 	const onScrollEndDrag = useCallback(
@@ -230,12 +296,15 @@ export function useCarouselScroll({
 				geometry,
 				rtl,
 			);
+			// The finger has let go: the track is now settling towards a page on its
+			// own, whether that takes a momentum fling or the short timer below.
+			beginSnap();
 			// A slow release produces no momentum phase at all, so settle on a short
 			// timer that `onMomentumScrollBegin` cancels when momentum does follow.
 			clearTimeout(dragSettleTimerRef.current);
 			dragSettleTimerRef.current = setTimeout(settle, DRAG_SETTLE_MS);
 		},
-		[geometry, rtl, settle],
+		[geometry, rtl, settle, beginSnap],
 	);
 
 	// Re-anchor whenever the layout changes: every offset moves when the
