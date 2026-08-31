@@ -38,6 +38,8 @@ export interface Geometry {
   visibleSlides: number;
   /** Width of one slide in dp. */
   slideWidth: number;
+  /** Resolved peek in dp — the inline padding on the content container. */
+  peek: number;
   /** Distance from one slide's leading edge to the next: width + spacing. */
   slideStride: number;
   /** Distance travelled by one page: `visibleSlides * slideStride`. */
@@ -99,6 +101,7 @@ export function computeGeometry({
   return {
     visibleSlides: visible,
     slideWidth,
+    peek,
     slideStride,
     pageStride,
     pageCount,
@@ -128,8 +131,26 @@ export const offsetForUnit = (unit: number, geometry: Geometry): number =>
 export const offsetForPage = (page: number, geometry: Geometry): number =>
   offsetForUnit(page + geometry.leadUnits, geometry);
 
-/** The snap points handed to the scroller, clone units included. */
-export function snapOffsets(geometry: Geometry): number[] {
+/**
+ * Convert between logical and physical scroll offsets.
+ *
+ * Page indices stay logical everywhere in this library — 0 is always the first
+ * page, growing as you page forward — because a right-to-left scroller mirrors
+ * its content, putting offset 0 at the *right* edge. Mirroring at this one
+ * boundary keeps every other calculation direction-agnostic.
+ *
+ * The mapping is its own inverse, so the same call converts either way.
+ */
+export const mirrorOffset = (offset: number, geometry: Geometry, rtl: boolean): number =>
+  rtl ? geometry.maxScrollOffset - offset : offset;
+
+/**
+ * The snap points handed to the scroller, clone units included.
+ *
+ * Returned in ascending order, which is what the scroller requires — so under
+ * `rtl` the mirrored offsets come back reversed, not just negated in place.
+ */
+export function snapOffsets(geometry: Geometry, rtl = false): number[] {
   if (geometry.pageStride <= 0) {
     return [];
   }
@@ -137,7 +158,10 @@ export function snapOffsets(geometry: Geometry): number[] {
   for (let unit = 0; unit < geometry.unitCount; unit += 1) {
     offsets.push(offsetForUnit(unit, geometry));
   }
-  return offsets;
+  if (!rtl) {
+    return offsets;
+  }
+  return offsets.map((offset) => mirrorOffset(offset, geometry, true)).reverse();
 }
 
 /**
@@ -194,13 +218,13 @@ export function pageFromOffset(offset: number, geometry: Geometry): ResolvedOffs
 export interface NavigationTarget {
   /** The logical page the move lands on. */
   page: number;
-  /** The scroll unit to animate to — a clone unit when wrapping seamlessly. */
-  unit: number;
   /**
-   * Unit to jump to, without animation, once the scroll settles. `null` when
-   * the move ends on a real page and no fix-up is needed.
+   * The scroll unit to animate to — a clone unit when wrapping seamlessly, in
+   * which case the carousel silently re-anchors onto the real page once the
+   * scroll settles. That fix-up is driven by {@link pageFromOffset} reporting
+   * `onClone`, so a user who flicks onto a clone is corrected the same way.
    */
-  repositionUnit: number | null;
+  unit: number;
 }
 
 /**
@@ -219,7 +243,7 @@ export function stepTarget(
   const raw = currentPage + delta;
 
   if (raw >= 0 && raw <= pageCount - 1) {
-    return raw === currentPage ? null : { page: raw, unit: raw + leadUnits, repositionUnit: null };
+    return raw === currentPage ? null : { page: raw, unit: raw + leadUnits };
   }
   if (!wraps) {
     return null;
@@ -234,18 +258,18 @@ export function stepTarget(
   // motion continues in the direction the user asked for instead of rewinding.
   // Anything larger has no clone to travel through and just jumps.
   if (cloned && raw === pageCount) {
-    return { page: 0, unit: pageCount + 1, repositionUnit: leadUnits };
+    return { page: 0, unit: pageCount + 1 };
   }
   if (cloned && raw === -1) {
-    return { page: pageCount - 1, unit: 0, repositionUnit: pageCount - 1 + leadUnits };
+    return { page: pageCount - 1, unit: 0 };
   }
-  return { page, unit: page + leadUnits, repositionUnit: null };
+  return { page, unit: page + leadUnits };
 }
 
 /** Absolute jump. Clamped into range — it never wraps. */
 export function goToTarget(page: number, geometry: Geometry): NavigationTarget {
   const target = clamp(Math.floor(page) || 0, 0, geometry.pageCount - 1);
-  return { page: target, unit: target + geometry.leadUnits, repositionUnit: null };
+  return { page: target, unit: target + geometry.leadUnits };
 }
 
 /** The page holding a given slide. */

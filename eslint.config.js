@@ -1,4 +1,4 @@
-import eslintReactTsx from 'super-configs/eslint/react/tsx';
+import reactNativeTsx from 'super-configs/eslint/react-native/tsx';
 
 export default [
   {
@@ -12,17 +12,7 @@ export default [
       'test-results/**',
     ],
   },
-  ...eslintReactTsx,
-  {
-    name: 'real-native-carousel/base',
-    files: ['**/*.{ts,tsx}'],
-    rules: {
-      // Biome owns formatting; these stylistic rules only fight it.
-      '@stylistic/brace-style': 'off',
-      '@stylistic/indent': 'off',
-      'import/order': 'off',
-    },
-  },
+  ...reactNativeTsx,
   {
     name: 'real-native-carousel/stories',
     files: ['**/*.stories.tsx', '.storybook/**/*.{ts,tsx}'],

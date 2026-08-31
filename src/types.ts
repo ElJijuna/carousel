@@ -398,6 +398,10 @@ export interface CarouselProps<TItem = unknown> {
   onDragStart?: () => void;
   /** Called when the user lets go of the track. */
   onDragEnd?: () => void;
-  /** `testID` for the track, forwarded to the underlying scroller. */
+  /**
+   * `testID` for the carousel's outer view. The scrollable track gets
+   * `` `${testID}-track` `` so tests and e2e specs can drive the scroller
+   * directly.
+   */
   testID?: string;
 }

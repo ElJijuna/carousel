@@ -1,0 +1,602 @@
+import {
+  Children,
+  forwardRef,
+  type ReactElement,
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  AccessibilityInfo,
+  FlatList,
+  I18nManager,
+  type ListRenderItemInfo,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+
+import { CarouselProvider } from './CarouselContext';
+import { useAutoPlay } from './hooks/useAutoPlay';
+import { useCarouselMetrics } from './hooks/useCarouselMetrics';
+import { useCarouselPage } from './hooks/useCarouselPage';
+import { useCarouselScroll } from './hooks/useCarouselScroll';
+import { useReducedMotion } from './hooks/useReducedMotion';
+import type {
+  CarouselComponents,
+  CarouselContextValue,
+  CarouselHandle,
+  CarouselNavigateOptions,
+  CarouselProps,
+  CarouselSlotLayout,
+} from './types';
+import {
+  type Geometry,
+  goToTarget,
+  pageForSlide,
+  snapOffsets,
+  sourceIndexFor,
+  stepTarget,
+  withClones,
+} from './utils/geometry';
+
+const defaultPageLabel = (index: number) => `Page ${index + 1}`;
+const defaultSlideLabel = (index: number, total: number) => `${index + 1} of ${total}`;
+const defaultStatusLabel = (index: number, total: number) => `Page ${index + 1} of ${total}`;
+
+const EMPTY_COMPONENTS: CarouselComponents = {};
+const EMPTY_SLOTS: CarouselSlotLayout = {};
+
+const styles = StyleSheet.create({
+  root: { width: '100%' },
+  // `position: relative` is the default, but naming it here is what makes the
+  // absolutely-positioned overlay slots below resolve against the track rather
+  // than against whatever ancestor happens to be positioned.
+  trackWrapper: { position: 'relative' },
+  overlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, justifyContent: 'center' },
+  arrowsOverlay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  arrowsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  paginationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  playPauseOverlay: { alignItems: 'flex-end', justifyContent: 'flex-start' },
+  playPauseRow: { alignItems: 'center' },
+});
+
+/** Whether a rendered slide position is one of the `infinite` clones. */
+const isCloneAt = (renderedIndex: number, geometry: Geometry, slideCount: number) =>
+  geometry.cloned &&
+  (renderedIndex < geometry.leadingClones ||
+    renderedIndex >= geometry.leadingClones + slideCount);
+
+function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandle>): ReactElement {
+  const {
+    children,
+    data,
+    renderItem,
+    keyExtractor,
+    visibleSlides,
+    peek,
+    spacing = 0,
+    loop = false,
+    infinite = false,
+    page: controlledPage,
+    defaultPage = 0,
+    onPageChanged,
+    autoPlay = false,
+    interval = 3000,
+    components = EMPTY_COMPONENTS,
+    slots = EMPTY_SLOTS,
+    style,
+    trackStyle,
+    slideStyle,
+    paginationStyle,
+    arrowsStyle,
+    accessibilityLabel = 'Carousel',
+    paginationLabel = 'Carousel pages',
+    pageLabel = defaultPageLabel,
+    slideLabel = defaultSlideLabel,
+    statusLabel = defaultStatusLabel,
+    previousLabel = 'Previous slide',
+    nextLabel = 'Next slide',
+    pauseLabel = 'Pause automatic rotation',
+    playLabel = 'Resume automatic rotation',
+    trackActiveSlides = false,
+    onDragStart,
+    onDragEnd,
+    testID,
+  } = props;
+
+  const isVirtualized = data !== undefined;
+  const childSlides = useMemo(
+    () => (isVirtualized ? [] : Children.toArray(children)),
+    [isVirtualized, children],
+  );
+  const slideCount = isVirtualized ? data.length : childSlides.length;
+
+  const rtl = I18nManager.isRTL;
+  const reducedMotion = useReducedMotion();
+  // `infinite` is a stronger `loop`: both wrap, only `infinite` clones.
+  const wraps = loop || infinite;
+
+  const { geometry, onLayout } = useCarouselMetrics({
+    slideCount,
+    visibleSlides,
+    peek,
+    spacing,
+    infinite,
+  });
+  const { pageCount, visibleSlides: visible, slideWidth, peek: resolvedPeek } = geometry;
+
+  const { page, pageRef, commitPage } = useCarouselPage({
+    page: controlledPage,
+    defaultPage,
+    pageCount,
+    onPageChanged,
+  });
+
+  const bridge = useCarouselScroll({ geometry, page, pageRef, commitPage, rtl, reducedMotion });
+  const { applyTarget } = bridge;
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  // ── Navigation ──────────────────────────────────────────────────────────────
+
+  const navigate = useCallback(
+    (delta: number, options: CarouselNavigateOptions | undefined, allowWrap: boolean) => {
+      const target = stepTarget(pageRef.current, delta, geometry, allowWrap);
+      if (target) {
+        applyTarget(target, options?.animated ?? true);
+      }
+    },
+    [geometry, applyTarget, pageRef],
+  );
+
+  const next = useCallback(
+    (options?: CarouselNavigateOptions) => navigate(1, options, wraps),
+    [navigate, wraps],
+  );
+  const previous = useCallback(
+    (options?: CarouselNavigateOptions) => navigate(-1, options, wraps),
+    [navigate, wraps],
+  );
+  const goTo = useCallback(
+    (target: number, options?: CarouselNavigateOptions) => {
+      applyTarget(goToTarget(target, geometry), options?.animated ?? true);
+    },
+    [applyTarget, geometry],
+  );
+  const goToSlide = useCallback(
+    (slide: number, options?: CarouselNavigateOptions) => {
+      goTo(pageForSlide(slide, geometry, slideCount), options);
+    },
+    [goTo, geometry, slideCount],
+  );
+
+  // Rotation always wraps, even without `loop`: a deck that silently stops on
+  // the last slide reads as broken rather than finished.
+  const handleTick = useCallback(() => navigate(1, undefined, true), [navigate]);
+  const { isPlaying, play, pause } = useAutoPlay({
+    enabled: autoPlay,
+    interval,
+    isDragging,
+    onTick: handleTick,
+  });
+
+  // ── Imperative handle ───────────────────────────────────────────────────────
+
+  const pageCountRef = useRef(pageCount);
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => {
+    pageCountRef.current = pageCount;
+    isPlayingRef.current = isPlaying;
+  });
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      next,
+      previous,
+      goTo,
+      goToSlide,
+      play,
+      pause,
+      // Getters rather than a frozen snapshot, so a read taken on the line
+      // after `next()` is already right instead of a render behind.
+      get page() {
+        return pageRef.current;
+      },
+      get pageCount() {
+        return pageCountRef.current;
+      },
+      get isPlaying() {
+        return isPlayingRef.current;
+      },
+    }),
+    [next, previous, goTo, goToSlide, play, pause, pageRef],
+  );
+
+  // ── Screen-reader announcements ─────────────────────────────────────────────
+
+  const announcedRef = useRef(true);
+  useEffect(() => {
+    // Skip the mount announcement: nothing changed yet, and a carousel that
+    // talks the moment it appears talks over the rest of the screen.
+    if (announcedRef.current) {
+      announcedRef.current = false;
+      return;
+    }
+    // Silent while a rotation is actually running — a carousel that speaks
+    // every few seconds makes the screen unusable.
+    if (!statusLabel || pageCount <= 1 || isPlaying) {
+      return;
+    }
+    AccessibilityInfo.announceForAccessibility(statusLabel(page, pageCount));
+  }, [page, pageCount, statusLabel, isPlaying]);
+
+  // ── Drag tracking ───────────────────────────────────────────────────────────
+
+  const handleScrollBeginDrag = useCallback(() => {
+    bridge.onScrollBeginDrag();
+    setIsDragging(true);
+    onDragStart?.();
+  }, [bridge, onDragStart]);
+
+  const handleScrollEndDrag = useCallback(
+    (event: Parameters<typeof bridge.onScrollEndDrag>[0]) => {
+      bridge.onScrollEndDrag(event);
+      setIsDragging(false);
+      onDragEnd?.();
+    },
+    [bridge, onDragEnd],
+  );
+
+  // ── Context ─────────────────────────────────────────────────────────────────
+
+  const canGoPrevious = wraps ? pageCount > 1 : page > 0;
+  const canGoNext = wraps ? pageCount > 1 : page < pageCount - 1;
+
+  const contextValue = useMemo<CarouselContextValue>(
+    () => ({
+      page,
+      pageCount,
+      slideCount,
+      visibleSlides: visible,
+      slideWidth,
+      canGoPrevious,
+      canGoNext,
+      isPlaying,
+      isDragging,
+      next,
+      previous,
+      goTo,
+      goToSlide,
+      play,
+      pause,
+    }),
+    [
+      page,
+      pageCount,
+      slideCount,
+      visible,
+      slideWidth,
+      canGoPrevious,
+      canGoNext,
+      isPlaying,
+      isDragging,
+      next,
+      previous,
+      goTo,
+      goToSlide,
+      play,
+      pause,
+    ],
+  );
+
+  // ── Track ───────────────────────────────────────────────────────────────────
+
+  const offsets = useMemo(() => snapOffsets(geometry, rtl), [geometry, rtl]);
+  const contentContainerStyle = useMemo(
+    () => ({ paddingHorizontal: resolvedPeek }),
+    [resolvedPeek],
+  );
+
+  const slideWrapperStyle = useCallback(
+    (renderedIndex: number) => [
+      {
+        width: slideWidth,
+        marginEnd: renderedIndex < geometry.renderedSlideCount - 1 ? spacing : 0,
+      },
+      slideStyle,
+    ],
+    [slideWidth, spacing, geometry.renderedSlideCount, slideStyle],
+  );
+
+  const activeRange = useMemo(
+    () => (trackActiveSlides ? { from: page * visible, to: (page + 1) * visible } : null),
+    [trackActiveSlides, page, visible],
+  );
+
+  const scrollerProps = {
+    horizontal: true as const,
+    showsHorizontalScrollIndicator: false,
+    // Snap points rather than `pagingEnabled`: paging snaps to whole viewport
+    // widths, which breaks `visibleSlides`, `peek` and `spacing` at once.
+    snapToOffsets: offsets.length > 0 ? offsets : undefined,
+    snapToAlignment: 'start' as const,
+    decelerationRate: 'fast' as const,
+    disableIntervalMomentum: true,
+    scrollEventThrottle: 16,
+    contentContainerStyle,
+    style: trackStyle,
+    testID: testID === undefined ? undefined : `${testID}-track`,
+    onScroll: bridge.onScroll,
+    onMomentumScrollBegin: bridge.onMomentumScrollBegin,
+    onMomentumScrollEnd: bridge.onMomentumScrollEnd,
+    onScrollBeginDrag: handleScrollBeginDrag,
+    onScrollEndDrag: handleScrollEndDrag,
+    onContentSizeChange: bridge.onContentSizeChange,
+  };
+
+  const renderedData = useMemo(
+    () => (isVirtualized ? withClones(data, geometry) : []),
+    [isVirtualized, data, geometry],
+  );
+
+  const renderVirtualizedItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<TItem>) => {
+      const source = sourceIndexFor(index, geometry, slideCount);
+      const clone = isCloneAt(index, geometry, slideCount);
+      return (
+        <View
+          style={slideWrapperStyle(index)}
+          accessibilityLabel={clone ? undefined : slideLabel(source, slideCount)}
+          // Clones are duplicates of real slides, so exposing them would make a
+          // screen reader read the same content twice and count the deck wrong.
+          accessibilityElementsHidden={clone}
+          importantForAccessibility={clone ? 'no-hide-descendants' : 'auto'}
+        >
+          {renderItem?.({
+            item,
+            index: source,
+            slideWidth,
+            isActive: activeRange ? source >= activeRange.from && source < activeRange.to : false,
+          })}
+        </View>
+      );
+    },
+    [geometry, slideCount, slideWrapperStyle, slideLabel, renderItem, slideWidth, activeRange],
+  );
+
+  const virtualizedKeyExtractor = useCallback(
+    (item: TItem, index: number) => {
+      const source = sourceIndexFor(index, geometry, slideCount);
+      const base = keyExtractor ? keyExtractor(item, source) : String(source);
+      // Clones repeat real items, so the rendered position has to make the key
+      // unique or React sees duplicates.
+      return geometry.cloned ? `${base}::${index}` : base;
+    },
+    [keyExtractor, geometry, slideCount],
+  );
+
+  const getItemLayout = useCallback(
+    (_: ArrayLike<TItem> | null | undefined, index: number) => ({
+      length: geometry.slideStride,
+      offset: resolvedPeek + index * geometry.slideStride,
+      index,
+    }),
+    [geometry.slideStride, resolvedPeek],
+  );
+
+  const track = isVirtualized ? (
+    <FlatList
+      ref={bridge.attachScroller}
+      data={renderedData as TItem[]}
+      renderItem={renderVirtualizedItem}
+      keyExtractor={virtualizedKeyExtractor}
+      // The offsets are already known, so the list never needs a measuring pass.
+      getItemLayout={getItemLayout}
+      initialNumToRender={Math.max(1, visible * 2)}
+      windowSize={3}
+      removeClippedSubviews
+      {...scrollerProps}
+    />
+  ) : (
+    <ScrollView ref={bridge.attachScroller} {...scrollerProps}>
+      {withClones(childSlides, geometry).map((node: ReactNode, index: number) => {
+        const source = sourceIndexFor(index, geometry, slideCount);
+        const clone = isCloneAt(index, geometry, slideCount);
+        return (
+          <View
+            // Position is stable across renders, so an index key is the right
+            // one here — the clones make child keys ambiguous anyway.
+            // biome-ignore lint/suspicious/noArrayIndexKey: rendered order is fixed
+            key={`slide-${index}`}
+            style={slideWrapperStyle(index)}
+            accessibilityLabel={clone ? undefined : slideLabel(source, slideCount)}
+            accessibilityElementsHidden={clone}
+            importantForAccessibility={clone ? 'no-hide-descendants' : 'auto'}
+          >
+            {node}
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
+
+  // ── Chrome slots ────────────────────────────────────────────────────────────
+
+  const PreviousArrow = components.PreviousArrow ?? components.Arrow;
+  const NextArrow = components.NextArrow ?? components.Arrow;
+  const { Dot, Pagination, PlayPauseControl } = components;
+
+  const arrowsPosition = slots.arrows ?? 'overlay';
+  const paginationPosition = slots.pagination ?? 'below';
+  const playPausePosition = slots.playPause ?? 'overlay';
+
+  // A single-page deck has nothing to navigate, so the arrows would only be
+  // permanently dead controls.
+  const showArrows = (PreviousArrow || NextArrow) && pageCount > 1;
+  const arrowsNode = showArrows ? (
+    <View
+      pointerEvents="box-none"
+      style={[
+        arrowsPosition === 'overlay' ? [styles.overlay, styles.arrowsOverlay] : styles.arrowsRow,
+        arrowsStyle,
+      ]}
+    >
+      <View pointerEvents="box-none">
+        {PreviousArrow ? (
+          <PreviousArrow
+            direction="previous"
+            onPress={previous}
+            disabled={!canGoPrevious}
+            accessibilityLabel={previousLabel}
+            page={page}
+            pageCount={pageCount}
+          />
+        ) : null}
+      </View>
+      <View pointerEvents="box-none">
+        {NextArrow ? (
+          <NextArrow
+            direction="next"
+            onPress={next}
+            disabled={!canGoNext}
+            accessibilityLabel={nextLabel}
+            page={page}
+            pageCount={pageCount}
+          />
+        ) : null}
+      </View>
+    </View>
+  ) : null;
+
+  let paginationNode: ReactNode = null;
+  if (Pagination) {
+    paginationNode = (
+      <Pagination
+        page={page}
+        pageCount={pageCount}
+        goTo={goTo}
+        pageLabel={pageLabel}
+        accessibilityLabel={paginationLabel}
+      />
+    );
+  } else if (Dot) {
+    paginationNode = (
+      <View
+        accessibilityLabel={paginationLabel}
+        style={[
+          paginationPosition === 'overlay' ? styles.overlay : null,
+          styles.paginationRow,
+          paginationStyle,
+        ]}
+        pointerEvents="box-none"
+      >
+        {Array.from({ length: pageCount }, (_, index) => (
+          <Dot
+            key={`dot-${index}`}
+            index={index}
+            total={pageCount}
+            selected={index === page}
+            onPress={() => goTo(index)}
+            accessibilityLabel={pageLabel(index, pageCount)}
+          />
+        ))}
+      </View>
+    );
+  }
+
+  const playPauseNode =
+    autoPlay && PlayPauseControl ? (
+      <View
+        pointerEvents="box-none"
+        style={
+          playPausePosition === 'overlay'
+            ? [styles.overlay, styles.playPauseOverlay]
+            : styles.playPauseRow
+        }
+      >
+        <PlayPauseControl
+          isPlaying={isPlaying}
+          onPress={isPlaying ? pause : play}
+          accessibilityLabel={isPlaying ? pauseLabel : playLabel}
+        />
+      </View>
+    ) : null;
+
+  /** Render `node` only when its slot was configured for `position`. */
+  const at = (position: string) => (node: ReactNode, slotPosition: string) =>
+    slotPosition === position ? node : null;
+
+  return (
+    <CarouselProvider value={contextValue}>
+      <View
+        style={[styles.root, style]}
+        onLayout={onLayout}
+        accessibilityLabel={accessibilityLabel}
+        testID={testID}
+      >
+        {at('above')(arrowsNode, arrowsPosition)}
+        {at('above')(paginationNode, paginationPosition)}
+        {at('above')(playPauseNode, playPausePosition)}
+
+        <View style={styles.trackWrapper}>
+          {track}
+          {at('overlay')(arrowsNode, arrowsPosition)}
+          {at('overlay')(paginationNode, paginationPosition)}
+          {at('overlay')(playPauseNode, playPausePosition)}
+        </View>
+
+        {at('below')(arrowsNode, arrowsPosition)}
+        {at('below')(paginationNode, paginationPosition)}
+        {at('below')(playPauseNode, playPausePosition)}
+      </View>
+    </CarouselProvider>
+  );
+}
+
+/**
+ * A headless, dependency-free horizontal carousel.
+ *
+ * The component owns every behaviour — measuring, paging, snapping, wrapping,
+ * auto-play, accessibility — and draws nothing but the scrollable track. All
+ * visible chrome comes from the `components` slots you supply, or from
+ * `useCarousel` for anything the slots do not cover.
+ *
+ * Slides arrive either as `children` (every slide mounted, ideal for a handful
+ * of screens) or as `data` + `renderItem` (virtualized, for long lists).
+ *
+ * @example Static slides with mocked chrome
+ * ```tsx
+ * <Carousel
+ *   visibleSlides={{ base: 3, 700: 2, 400: 1 }}
+ *   spacing={12}
+ *   peek={24}
+ *   loop
+ *   components={{ Arrow: MyArrow, Dot: MyDot }}
+ * >
+ *   {items.map((item) => <Card key={item.id} {...item} />)}
+ * </Carousel>
+ * ```
+ *
+ * @example Virtualized, controlled
+ * ```tsx
+ * const [page, setPage] = useState(0);
+ *
+ * <Carousel
+ *   data={photos}
+ *   renderItem={({ item }) => <Photo uri={item.uri} />}
+ *   keyExtractor={(item) => item.id}
+ *   page={page}
+ *   onPageChanged={setPage}
+ * />
+ * ```
+ */
+export const Carousel = forwardRef(CarouselImpl) as <TItem = unknown>(
+  props: CarouselProps<TItem> & { ref?: Ref<CarouselHandle> },
+) => ReactElement;

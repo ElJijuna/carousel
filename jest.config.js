@@ -1,13 +1,11 @@
+import base from 'super-configs/jest/react-native';
+
 /** @type {import('jest').Config} */
 export default {
-  preset: 'react-native',
+  ...base,
+  verbose: false,
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}'],
-  // React Native ships untranspiled Flow/ESM sources, so its own packages have
-  // to go through Babel rather than being treated as pre-built CJS.
-  transformIgnorePatterns: [
-    'node_modules/(?!(?:jest-)?react-native|@react-native(-community)?|@testing-library/react-native)',
-  ],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.test.{ts,tsx}',
