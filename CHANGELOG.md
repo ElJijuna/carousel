@@ -1,3 +1,20 @@
+## [0.3.0](https://github.com/ElJijuna/carousel/compare/v0.2.0...v0.3.0) (2026-08-31)
+
+### Features
+
+* enhance accessibility features for keyboard navigation in carousel ([ea3da1b](https://github.com/ElJijuna/carousel/commit/ea3da1b2a876f8e7356a84a3c318006d1851a7e2))
+* enhance carousel functionality with improved story opening and resizing handling ([9ad6627](https://github.com/ElJijuna/carousel/commit/9ad6627a0bfdf888dceb22f421ea34b4b80ed74d))
+* fill the height the carousel is given ([eaebc67](https://github.com/ElJijuna/carousel/commit/eaebc67705af1f89116c0c68efd981487853c56f))
+
+### Documentation
+
+* add autodocs support and improve splitBody styling for better layout ([2dcaf97](https://github.com/ElJijuna/carousel/commit/2dcaf975ac03142106209282387761e6440c08a7))
+* add CreditCards story and mock data for credit card carousel ([6abfb76](https://github.com/ElJijuna/carousel/commit/6abfb76982b08b012d5ed203d52c5581eb2d7429))
+* add PageLayout and PageFooter components with mock data for onboarding carousel ([2d0fa45](https://github.com/ElJijuna/carousel/commit/2d0fa4545f3825a026da9dcefb867b0aa347793a))
+* add SplitCards story with mock data and images for enhanced carousel presentation ([dfeecf2](https://github.com/ElJijuna/carousel/commit/dfeecf23119b2b23b77937bb187b66b325035f30))
+* backfill 0.1.0 section in changelog ([f3cb68a](https://github.com/ElJijuna/carousel/commit/f3cb68a67dbe5171e1c84608e9e615ec5215b46d))
+* enhance Carousel stories with improved argTypes and mock data adjustments ([e8079ae](https://github.com/ElJijuna/carousel/commit/e8079aeff352970930212a4e580256c0389a9fa8))
+
 ## [0.2.0](https://github.com/ElJijuna/carousel/compare/v0.1.0...v0.2.0) (2026-08-31)
 
 ### Features
