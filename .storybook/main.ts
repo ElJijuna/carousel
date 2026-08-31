@@ -2,7 +2,17 @@ import type { StorybookConfig } from "@storybook/react-native-web-vite";
 
 const config: StorybookConfig = {
 	stories: ["../src/**/*.stories.@(ts|tsx)"],
-	addons: ["@storybook/addon-docs", "@storybook/addon-a11y"],
+	staticDirs: [{ from: "../storybook-reports", to: "/" }],
+	addons: [
+		"@storybook/addon-docs",
+		"@storybook/addon-a11y",
+		{
+			name: "@pilmee/storybook-addon-jest",
+			options: {
+				reportPath: "./jest-report.json",
+			},
+		},
+	],
 	framework: {
 		name: "@storybook/react-native-web-vite",
 		options: {

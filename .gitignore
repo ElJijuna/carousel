@@ -3,6 +3,8 @@ lib/
 coverage/
 docs/api/
 storybook-static/
+storybook-reports/*
+!storybook-reports/.gitkeep
 playwright-report/
 test-results/
 .turbo/

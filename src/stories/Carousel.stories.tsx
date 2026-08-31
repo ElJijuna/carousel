@@ -134,6 +134,9 @@ const meta = {
 	// then never rendered anywhere.
 	tags: ["autodocs"],
 	parameters: {
+		jest: {
+			componentPath: "src/Carousel.tsx",
+		},
 		docs: {
 			description: {
 				component:

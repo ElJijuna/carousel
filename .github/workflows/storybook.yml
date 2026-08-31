@@ -41,12 +41,16 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
 
-      - name: Build Storybook
+      # The `:tests` variant, not the plain one: it runs Jest first and writes
+      # storybook-reports/jest-report.json, which `staticDirs` copies into the
+      # site for the Jest addon panel to fetch. That directory is gitignored, so
+      # a fresh checkout has nothing to publish unless this step generates it.
+      - name: Build Storybook with the Jest report
         env:
           # Vite emits absolute asset URLs, so without this prefix every chunk
           # 404s once the site is served from a subpath.
           STORYBOOK_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
-        run: npm run build-storybook
+        run: npm run build-storybook:tests
 
       - uses: actions/upload-pages-artifact@v3
         with:
