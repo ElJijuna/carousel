@@ -154,6 +154,9 @@ jobs:
   storybook:
     name: Build Storybook
     runs-on: ubuntu-latest
+    # Only on pull requests: a push to main is already building it in
+    # storybook.yml on its way to GitHub Pages.
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 

@@ -16,11 +16,14 @@
 [![Expo](https://img.shields.io/badge/Expo-Go_ready-000020?logo=expo&logoColor=white)](https://expo.dev)
 [![react-native-web](https://img.shields.io/badge/react--native--web-supported-61DAFB?logo=react&logoColor=white)](https://necolas.github.io/react-native-web/)
 [![New Architecture](https://img.shields.io/badge/New_Architecture-Fabric-61DAFB?logo=react&logoColor=white)](https://reactnative.dev/architecture/landing-page)
-[![Storybook](https://img.shields.io/badge/Storybook-stories-FF4785?logo=storybook&logoColor=white)](https://storybook.js.org)
+[![Storybook](https://img.shields.io/badge/Storybook-live_demo-FF4785?logo=storybook&logoColor=white)](https://eljijuna.github.io/carousel/)
 [![Playwright](https://img.shields.io/badge/Playwright-e2e-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev)
 [![Biome](https://img.shields.io/badge/Biome-formatted-60a5fa?logo=biome&logoColor=white)](https://biomejs.dev)
 
 A **headless**, dependency-free horizontal carousel for React Native, Expo and react-native-web.
+
+**[▶ Live Storybook](https://eljijuna.github.io/carousel/)** — every story running on
+react-native-web, with the mocked chrome you can copy from `src/stories/mocks.tsx`.
 
 The component owns every behaviour — measuring, paging, snapping, wrapping, auto-play,
 accessibility — and draws **nothing but the scrollable track**. Every arrow, dot and control comes

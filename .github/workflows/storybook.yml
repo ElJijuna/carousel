@@ -1,0 +1,57 @@
+name: Storybook
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race each other, but never cancel one halfway either —
+# an interrupted deploy leaves the site serving a half-uploaded artifact.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Reports where the site will actually be served from, so the build below
+      # can be told its base path rather than having it hardcoded. Resolves to
+      # `/carousel` for a project site and to `` for a custom domain at root.
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Build Storybook
+        env:
+          # Vite emits absolute asset URLs, so without this prefix every chunk
+          # 404s once the site is served from a subpath.
+          STORYBOOK_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+        run: npm run build-storybook
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: storybook-static/
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

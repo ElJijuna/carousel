@@ -13,6 +13,14 @@ const config: StorybookConfig = {
 		},
 	},
 	docs: {},
+	viteFinal: (config) => ({
+		...config,
+		// GitHub Pages serves this repo's site from `/carousel/`, not from the
+		// domain root, so the built asset URLs have to carry that prefix or every
+		// script and chunk 404s. Left at `/` for `storybook dev` and for the
+		// Playwright suite, which both serve from the root.
+		base: process.env.STORYBOOK_BASE_PATH ?? "/",
+	}),
 };
 
 export default config;
