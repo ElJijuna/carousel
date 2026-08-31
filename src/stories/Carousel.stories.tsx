@@ -130,6 +130,10 @@ const structuralArgTypes = Object.fromEntries(
 const meta = {
 	title: "Carousel",
 	component: Carousel,
+	// Turns the props table below into an actual page: without it the component
+	// description, the `table.type` summaries and the argTypes are computed and
+	// then never rendered anywhere.
+	tags: ["autodocs"],
 	parameters: {
 		docs: {
 			description: {

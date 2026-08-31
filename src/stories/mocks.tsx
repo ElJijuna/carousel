@@ -159,7 +159,15 @@ const styles = StyleSheet.create({
 	},
 	// Both halves are `flex: 1` of the same row, which is what makes the split
 	// track the slide width instead of a hard-coded number.
-	splitBody: { flex: 1, padding: 16, justifyContent: "space-between" },
+	splitBody: {
+		flex: 1,
+		// Without `minWidth: 0` a flex item never shrinks below its content, so
+		// the footer row's own width would push the text half past the halfway
+		// line and leave the image with whatever is left.
+		minWidth: 0,
+		padding: 16,
+		justifyContent: "space-between",
+	},
 	splitText: { flexShrink: 1, overflow: "hidden" },
 	splitImage: { flex: 1, height: "100%" },
 	splitEyebrow: {
