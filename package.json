@@ -109,7 +109,7 @@
 		"react": "19.2.8",
 		"react-dom": "19.2.8",
 		"react-native": "0.87.1",
-		"react-native-builder-bob": "^0.35.0",
+		"react-native-builder-bob": "^0.43.0",
 		"react-native-web": "^0.21.2",
 		"semantic-release": "^24.2.0",
 		"storybook": "^10.5.10",
@@ -138,8 +138,7 @@
 			[
 				"typescript",
 				{
-					"project": "tsconfig.build.json",
-					"esm": true
+					"project": "tsconfig.build.json"
 				}
 			]
 		],
