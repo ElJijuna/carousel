@@ -157,19 +157,13 @@ const styles = StyleSheet.create({
 		// The image runs to the card's edge, so the corners have to clip it.
 		overflow: "hidden",
 	},
-	// Both halves are `flex: 1` of the same row, which is what makes the split
-	// track the slide width instead of a hard-coded number.
-	splitBody: {
-		flex: 1,
-		// Without `minWidth: 0` a flex item never shrinks below its content, so
-		// the footer row's own width would push the text half past the halfway
-		// line and leave the image with whatever is left.
-		minWidth: 0,
-		padding: 16,
-		justifyContent: "space-between",
-	},
+	// Each half is a percentage of the same row, so the split tracks the slide
+	// width instead of a hard-coded number. `flex: 1` looks equivalent and is
+	// not: a zero flex-basis is a *content-box* basis, so the text half would
+	// come out its own padding wider than the image.
+	splitBody: { width: "50%", padding: 16, justifyContent: "space-between" },
 	splitText: { flexShrink: 1, overflow: "hidden" },
-	splitImage: { flex: 1, height: "100%" },
+	splitImage: { width: "50%", height: "100%" },
 	splitEyebrow: {
 		fontSize: 11,
 		fontWeight: "700",
@@ -446,7 +440,7 @@ export interface MockFeature {
 /**
  * A card split down the middle: text on the left, artwork on the right.
  *
- * Both halves are `flex: 1` siblings in a row, so the split follows whatever
+ * Each half is `width: '50%'` of the same row, so the split follows whatever
  * width the carousel hands the slide — including the narrower slides you get
  * from `visibleSlides` or `peek` — rather than a fixed pixel column.
  */

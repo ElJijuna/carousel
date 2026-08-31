@@ -106,6 +106,14 @@ export function useCarouselScroll({
 	const lastAppliedPageRef = useRef(page);
 	/** Set once the user touches the track, disabling the initial-anchor fixups. */
 	const userScrolledRef = useRef(false);
+	/**
+	 * Where a programmatic scroll is currently travelling, and how. Kept so the
+	 * move can be re-issued if the content changes size under it mid-flight.
+	 */
+	const programmaticTargetRef = useRef<{
+		offset: number;
+		animated: boolean;
+	} | null>(null);
 
 	useEffect(
 		() => () => {
@@ -135,6 +143,7 @@ export function useCarouselScroll({
 
 	const settle = useCallback(() => {
 		programmaticRef.current = false;
+		programmaticTargetRef.current = null;
 		clearTimeout(programmaticTimerRef.current);
 		clearTimeout(dragSettleTimerRef.current);
 		if (geometry.pageStride <= 0) {
@@ -160,10 +169,10 @@ export function useCarouselScroll({
 			clearTimeout(programmaticTimerRef.current);
 			programmaticTimerRef.current = setTimeout(settle, PROGRAMMATIC_SETTLE_MS);
 
-			scrollToLogical(
-				offsetForUnit(target.unit, geometry),
-				animated && !reducedMotion,
-			);
+			const offset = offsetForUnit(target.unit, geometry);
+			const withAnimation = animated && !reducedMotion;
+			programmaticTargetRef.current = { offset, animated: withAnimation };
+			scrollToLogical(offset, withAnimation);
 		},
 		[commitPage, settle, scrollToLogical, geometry, reducedMotion],
 	);
@@ -254,18 +263,26 @@ export function useCarouselScroll({
 		// `FlatList` ignores `scrollToOffset` until it has laid out content, so the
 		// first anchor above can silently do nothing. Retry once content exists —
 		// but never after the user has taken over.
-		if (
-			geometry.pageStride <= 0 ||
-			userScrolledRef.current ||
-			programmaticRef.current
-		) {
+		if (geometry.pageStride <= 0 || userScrolledRef.current) {
 			return;
 		}
-		const target = offsetForPage(pageRef.current, geometry);
-		if (Math.abs(currentOffsetRef.current - target) < 1) {
+
+		// A move already in flight is re-issued rather than re-anchored: in the
+		// virtualized mode the list mounts the slides the scroll is travelling
+		// towards, and content that resizes under a smooth scroll cuts it short —
+		// the snap points then park it on whatever page it had reached, which is
+		// how a wrap to the last page used to land two pages early.
+		const inFlight = programmaticRef.current
+			? programmaticTargetRef.current
+			: null;
+		const target = inFlight ?? {
+			offset: offsetForPage(pageRef.current, geometry),
+			animated: false,
+		};
+		if (Math.abs(currentOffsetRef.current - target.offset) < 1) {
 			return;
 		}
-		scrollToLogical(target, false);
+		scrollToLogical(target.offset, target.animated);
 	}, [geometry, scrollToLogical, pageRef]);
 
 	const attachScroller = useCallback((instance: CarouselScroller | null) => {

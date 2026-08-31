@@ -513,9 +513,9 @@ export const CreditCards: Story = {
 
 /**
  * Split cards: title, description and footer on the left half, artwork on the
- * right. Both halves are `flex: 1`, so the split follows the slide width the
- * carousel computes — drop `visibleSlides` to 2 in the controls and each card
- * stays split, just narrower.
+ * right. Each half is exactly half the slide, so the split follows the width
+ * the carousel computes — drop `visibleSlides` to 2 in the controls and each
+ * card stays split down the middle, just narrower.
  *
  * Rendered through `render` so the item generic comes from `mockFeatures`.
  */

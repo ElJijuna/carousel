@@ -12,9 +12,20 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 const TRACK = '[data-testid="carousel-track"]';
 
-/** Open a story by its Storybook id, without the manager chrome around it. */
-export async function openStory(page: Page, id: string): Promise<void> {
-	await page.goto(`/iframe.html?id=carousel--${id}&viewMode=story`);
+/**
+ * Open a story by its Storybook id, without the manager chrome around it.
+ *
+ * `args` is Storybook's own URL syntax (`"visibleSlides:2;peek:0"`), which is
+ * how a story gets driven at a setting it does not ship with — the same thing
+ * the Controls panel does, minus the panel.
+ */
+export async function openStory(
+	page: Page,
+	id: string,
+	args?: string,
+): Promise<void> {
+	const query = args === undefined ? "" : `&args=${args}`;
+	await page.goto(`/iframe.html?id=carousel--${id}&viewMode=story${query}`);
 	await expect(track(page)).toBeVisible();
 	// The carousel measures itself with `onLayout`, so nothing is positioned
 	// until a real width has arrived and the content has been sized against it.

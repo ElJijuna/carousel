@@ -407,6 +407,28 @@ describe("onContentSizeChange", () => {
 
 		expect(scroller.scrollTo).not.toHaveBeenCalled();
 	});
+
+	it("re-issues a move the content resized under, instead of re-anchoring", async () => {
+		const { result, scroller } = await setup();
+
+		// A long animated move — the wrap from the first page to the last.
+		await act(async () => {
+			result.current.applyTarget({ page: 4, unit: 4 }, true);
+		});
+		expect(lastScrollX(scroller)).toEqual({ x: 1200, animated: true });
+		scroller.scrollTo.mockClear();
+
+		// Halfway there, the virtualized list mounts the slides being travelled
+		// towards and the content resizes, which cuts a browser's smooth scroll
+		// short. The move has to be re-issued to its own target: re-anchoring to
+		// where the track has *reached* is how the wrap used to land early.
+		await act(async () => {
+			result.current.onScroll(scrollEvent(600));
+			result.current.onContentSizeChange();
+		});
+
+		expect(lastScrollX(scroller)).toEqual({ x: 1200, animated: true });
+	});
 });
 
 describe("scroller shapes", () => {
