@@ -1,0 +1,12 @@
+node_modules/
+lib/
+coverage/
+docs/api/
+storybook-static/
+playwright-report/
+test-results/
+.turbo/
+*.log
+.DS_Store
+.env
+.env.local
