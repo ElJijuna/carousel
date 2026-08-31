@@ -10,7 +10,9 @@ export default {
     'src/**/*.{ts,tsx}',
     '!src/**/*.test.{ts,tsx}',
     '!src/**/*.stories.tsx',
+    // Type-only modules carry no runtime code to cover.
     '!src/index.ts',
+    '!src/types.ts',
   ],
   coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
   coverageThreshold: {
