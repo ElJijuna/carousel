@@ -187,6 +187,31 @@ const styles = StyleSheet.create({
 	},
 	splitFooterText: { fontSize: 12, color: palette.caption },
 	splitFooterLink: { fontSize: 12, fontWeight: "600", color: palette.accent },
+
+	pageSlide: {
+		// A definite height rather than `flex: 1`: the track sizes itself to its
+		// content, so the slide is what decides how much of the screen the
+		// carousel takes.
+		height: 480,
+		paddingHorizontal: 24,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	pageSlideArt: { width: "100%", height: 224, borderRadius: 16 },
+	pageSlideTitle: {
+		fontSize: 20,
+		fontWeight: "600",
+		color: palette.ink,
+		textAlign: "center",
+		marginTop: 24,
+	},
+	pageSlideBody: {
+		fontSize: 14,
+		lineHeight: 20,
+		color: palette.caption,
+		textAlign: "center",
+		marginTop: 8,
+	},
 });
 
 /** Round arrow button. Goes translucent rather than unmounting at the ends. */
@@ -488,5 +513,62 @@ export const mockFeatures: readonly MockFeature[] = [
 			"Every slot arrives with the label it needs, and page changes are announced as they happen.",
 		footer: "6 min read",
 		image: "dusk",
+	},
+];
+
+/** One step of the page-level story. */
+export interface MockPage {
+	id: string;
+	title: string;
+	body: string;
+	/** Which entry of {@link mockImages} sits above the copy. */
+	image: keyof typeof mockImages;
+}
+
+/** A full-screen onboarding step: artwork, title, one paragraph. */
+export const MockPageSlide = ({ page }: { page: MockPage }) => (
+	<View style={styles.pageSlide} testID={`page-${page.id}`}>
+		<Image
+			style={styles.pageSlideArt}
+			resizeMode="cover"
+			source={{ uri: mockImages[page.image] }}
+			accessibilityLabel={mockImageLabels[page.image]}
+		/>
+		<Text style={styles.pageSlideTitle}>{page.title}</Text>
+		<Text style={styles.pageSlideBody}>{page.body}</Text>
+	</View>
+);
+
+/** Five onboarding steps, for the page-level story. */
+export const mockPages: readonly MockPage[] = [
+	{
+		id: "welcome",
+		title: "A carousel, not a design",
+		body: "Everything you see here is chrome the story passes in. The component itself draws only the track.",
+		image: "harbour",
+	},
+	{
+		id: "layout",
+		title: "Sized by its container",
+		body: "Slides are measured against the width the carousel was actually given, so it fits a phone or a sidebar.",
+		image: "meadow",
+	},
+	{
+		id: "gestures",
+		title: "Real scrolling, real snapping",
+		body: "The track is a native scroll view. Flicks, momentum and snapping are the platform's, not a reimplementation.",
+		image: "dawn",
+	},
+	{
+		id: "a11y",
+		title: "Announced as it moves",
+		body: "Each slide carries a label, and every page change is announced the way a live region would.",
+		image: "dusk",
+	},
+	{
+		id: "ready",
+		title: "Bring your own everything",
+		body: "Dots, arrows, footers, progress bars — pass a component, or build one on the useCarousel hook.",
+		image: "harbour",
 	},
 ];

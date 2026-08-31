@@ -5,18 +5,20 @@ import { fn } from "storybook/test";
 
 import { Carousel } from "../Carousel";
 import { useCarousel } from "../CarouselContext";
-import type { CarouselHandle } from "../types";
+import type { CarouselHandle, CarouselPaginationSlotProps } from "../types";
 import {
 	MockArrow,
 	MockCreditCard,
 	MockDot,
 	MockFraction,
+	MockPageSlide,
 	MockPlayPause,
 	MockSlide,
 	MockSplitCard,
 	mockCards,
 	mockData,
 	mockFeatures,
+	mockPages,
 	mockSlides,
 	palette,
 } from "./mocks";
@@ -49,6 +51,52 @@ const styles = StyleSheet.create({
 	},
 	progressFill: { height: 4, borderRadius: 2, backgroundColor: palette.accent },
 	dimmed: { opacity: 0.4 },
+
+	screen: {
+		alignSelf: "center",
+		width: "100%",
+		maxWidth: 390,
+		height: 620,
+		borderRadius: 24,
+		borderWidth: 1,
+		borderColor: palette.track,
+		backgroundColor: palette.surface,
+		overflow: "hidden",
+	},
+	topBar: {
+		height: 52,
+		alignItems: "center",
+		justifyContent: "center",
+		borderBottomWidth: 1,
+		borderBottomColor: palette.track,
+	},
+	topBarTitle: { fontSize: 15, fontWeight: "600", color: palette.ink },
+	// `justifyContent` is what pins the footer to the bottom of the screen: the
+	// carousel fills the space left by the top bar, the track keeps its content
+	// height at the top, and the pagination slot is pushed to the far end.
+	pageCarousel: { flex: 1, justifyContent: "space-between" },
+	pageFooter: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		paddingLeft: 12,
+		paddingRight: 16,
+		paddingVertical: 12,
+		borderTopWidth: 1,
+		borderTopColor: palette.track,
+	},
+	pageDots: { flexDirection: "row", alignItems: "center" },
+	primaryButton: {
+		paddingVertical: 12,
+		paddingHorizontal: 20,
+		borderRadius: 10,
+		backgroundColor: palette.accent,
+	},
+	primaryButtonText: {
+		color: palette.surface,
+		fontSize: 14,
+		fontWeight: "600",
+	},
 });
 
 /**
@@ -481,5 +529,95 @@ export const SplitCards: Story = {
 			keyExtractor={(feature) => feature.id}
 			renderItem={({ item }) => <MockSplitCard feature={item} />}
 		/>
+	),
+};
+
+/**
+ * The screen's bottom bar: the page dots on the left, the primary action on the
+ * right.
+ *
+ * It goes in the `Pagination` slot — the one that replaces the whole indicator
+ * row — because that is what lets the dots and the button be one bar instead of
+ * two stacked ones. The dots are the same `MockDot` every other story uses; only
+ * their container changed.
+ */
+const PageFooter = ({
+	page,
+	pageCount,
+	goTo,
+	pageLabel,
+	accessibilityLabel,
+}: CarouselPaginationSlotProps) => {
+	// The slot props carry everything about the indicator; the hook is only here
+	// for the button, which is not an indicator at all.
+	const { next, canGoNext } = useCarousel();
+	return (
+		<View style={styles.pageFooter}>
+			{/* Labelled but role-less, exactly as the carousel labels the dot row it
+          draws itself — a `tablist` here would promise tabs it does not have. */}
+			<View style={styles.pageDots} accessibilityLabel={accessibilityLabel}>
+				{Array.from({ length: pageCount }, (_, index) => (
+					<MockDot
+						// The page index *is* the identity: a fixed-length row of
+						// interchangeable controls, one per page.
+						// biome-ignore lint/suspicious/noArrayIndexKey: index is the identity
+						key={`page-dot-${index}`}
+						index={index}
+						total={pageCount}
+						selected={index === page}
+						onPress={() => goTo(index)}
+						accessibilityLabel={pageLabel(index, pageCount)}
+					/>
+				))}
+			</View>
+			{/*
+        The last page restarts the tour rather than leaving a dead button: a
+        story should not ship a control that does nothing.
+      */}
+			<Pressable
+				testID="next-page"
+				accessibilityRole="button"
+				style={styles.primaryButton}
+				onPress={() => (canGoNext ? next() : goTo(0))}
+			>
+				<Text style={styles.primaryButtonText}>
+					{canGoNext ? "Next page" : "Start over"}
+				</Text>
+			</Pressable>
+		</View>
+	);
+};
+
+/**
+ * The carousel as the page itself: a top bar above it, and a bottom bar holding
+ * the dots and the primary "Next page" button.
+ *
+ * The carousel is the whole area between the two bars, which is the layout an
+ * onboarding or a tour actually needs — rather than a card sitting in a page
+ * that owns its own chrome.
+ */
+export const PageLayout: Story = {
+	args: {
+		testID: "carousel",
+		components: { Pagination: PageFooter },
+		slots: { pagination: "below" },
+		accessibilityLabel: "Onboarding",
+		paginationLabel: "Onboarding steps",
+		pageLabel: (index: number, total: number) =>
+			`Step ${index + 1} of ${total}`,
+		style: styles.pageCarousel,
+	},
+	render: (args) => (
+		<View style={styles.screen}>
+			<View style={styles.topBar}>
+				<Text style={styles.topBarTitle}>Top bar</Text>
+			</View>
+			<Carousel
+				{...args}
+				data={mockPages}
+				keyExtractor={(item) => item.id}
+				renderItem={({ item }) => <MockPageSlide page={item} />}
+			/>
+		</View>
 	),
 };
