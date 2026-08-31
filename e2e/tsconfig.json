@@ -1,0 +1,10 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		// Playwright's `evaluate` callbacks run in the browser, so this project —
+		// and only this one — needs the DOM lib.
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
+		"types": ["node"]
+	},
+	"include": ["."]
+}

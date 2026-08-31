@@ -9,23 +9,23 @@
  * @packageDocumentation
  */
 
-export { Carousel } from './Carousel';
-export { useCarousel, useCarouselOptional } from './CarouselContext';
+export { Carousel } from "./Carousel";
+export { useCarousel, useCarouselOptional } from "./CarouselContext";
 export type {
-  CarouselActions,
-  CarouselArrowSlotProps,
-  CarouselComponents,
-  CarouselContextValue,
-  CarouselDotSlotProps,
-  CarouselHandle,
-  CarouselNavigateOptions,
-  CarouselPaginationSlotProps,
-  CarouselPlayPauseSlotProps,
-  CarouselProps,
-  CarouselRenderItem,
-  CarouselRenderItemInfo,
-  CarouselSlotLayout,
-  CarouselState,
-  ResponsiveMap,
-  ResponsiveValue,
-} from './types';
+	CarouselActions,
+	CarouselArrowSlotProps,
+	CarouselComponents,
+	CarouselContextValue,
+	CarouselDotSlotProps,
+	CarouselHandle,
+	CarouselNavigateOptions,
+	CarouselPaginationSlotProps,
+	CarouselPlayPauseSlotProps,
+	CarouselProps,
+	CarouselRenderItem,
+	CarouselRenderItemInfo,
+	CarouselSlotLayout,
+	CarouselState,
+	ResponsiveMap,
+	ResponsiveValue,
+} from "./types";
