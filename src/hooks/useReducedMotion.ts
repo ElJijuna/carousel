@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { AccessibilityInfo } from "react-native";
+import { useEffect, useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
 
 /**
  * Track the operating system's "reduce motion" accessibility setting.
@@ -13,37 +13,34 @@ import { AccessibilityInfo } from "react-native";
  * @returns `true` when the user has asked for reduced motion.
  */
 export function useReducedMotion(): boolean {
-	const [reduced, setReduced] = useState(false);
+  const [reduced, setReduced] = useState(false);
 
-	useEffect(() => {
-		let active = true;
+  useEffect(() => {
+    let active = true;
 
-		const read = async () => {
-			try {
-				const enabled = await AccessibilityInfo.isReduceMotionEnabled();
-				if (active) {
-					setReduced(enabled);
-				}
-			} catch {
-				// Not every platform implements the query — react-native-web only does
-				// in browsers exposing the media feature. A rejection means "no
-				// preference expressed", not "failed", so full motion stands.
-			}
-		};
-		void read();
+    const read = async () => {
+      try {
+        const enabled = await AccessibilityInfo.isReduceMotionEnabled();
+        if (active) {
+          setReduced(enabled);
+        }
+      } catch {
+        // Not every platform implements the query — react-native-web only does
+        // in browsers exposing the media feature. A rejection means "no
+        // preference expressed", not "failed", so full motion stands.
+      }
+    };
+    void read();
 
-		const subscription = AccessibilityInfo.addEventListener(
-			"reduceMotionChanged",
-			(enabled) => {
-				setReduced(enabled);
-			},
-		);
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', (enabled) => {
+      setReduced(enabled);
+    });
 
-		return () => {
-			active = false;
-			subscription?.remove();
-		};
-	}, []);
+    return () => {
+      active = false;
+      subscription?.remove();
+    };
+  }, []);
 
-	return reduced;
+  return reduced;
 }

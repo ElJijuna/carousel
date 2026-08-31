@@ -1,30 +1,30 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, type AppStateStatus } from "react-native";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 
 /** Inputs to {@link useAutoPlay}. */
 export interface UseAutoPlayOptions {
-	/** Whether the consumer asked for automatic rotation at all. */
-	enabled: boolean;
-	/** Milliseconds between advances. */
-	interval: number;
-	/** Whether the user is dragging the track right now. */
-	isDragging: boolean;
-	/** Called on each tick. Kept in a ref, so it need not be stable. */
-	onTick: () => void;
+  /** Whether the consumer asked for automatic rotation at all. */
+  enabled: boolean;
+  /** Milliseconds between advances. */
+  interval: number;
+  /** Whether the user is dragging the track right now. */
+  isDragging: boolean;
+  /** Called on each tick. Kept in a ref, so it need not be stable. */
+  onTick: () => void;
 }
 
 /** What {@link useAutoPlay} hands back. */
 export interface AutoPlayState {
-	/**
-	 * Whether the rotation is running *right now* — false while paused by the
-	 * user, mid-drag, or with the app in the background. This is what a
-	 * play/pause control should render from.
-	 */
-	isPlaying: boolean;
-	/** Resume the rotation, overriding an earlier pause. */
-	play: () => void;
-	/** Stop the rotation. */
-	pause: () => void;
+  /**
+   * Whether the rotation is running *right now* — false while paused by the
+   * user, mid-drag, or with the app in the background. This is what a
+   * play/pause control should render from.
+   */
+  isPlaying: boolean;
+  /** Resume the rotation, overriding an earlier pause. */
+  play: () => void;
+  /** Stop the rotation. */
+  pause: () => void;
 }
 
 /**
@@ -39,62 +39,62 @@ export interface AutoPlayState {
  * the behaviour, the implementer supplies the button.
  */
 export function useAutoPlay({
-	enabled,
-	interval,
-	isDragging,
-	onTick,
+  enabled,
+  interval,
+  isDragging,
+  onTick,
 }: UseAutoPlayOptions): AutoPlayState {
-	const [wanted, setWanted] = useState(enabled);
-	const [appActive, setAppActive] = useState(true);
-	const onTickRef = useRef(onTick);
+  const [wanted, setWanted] = useState(enabled);
+  const [appActive, setAppActive] = useState(true);
+  const onTickRef = useRef(onTick);
 
-	useEffect(() => {
-		onTickRef.current = onTick;
-	});
+  useEffect(() => {
+    onTickRef.current = onTick;
+  });
 
-	// Turning `autoPlay` on after the fact should start it, and turning it off
-	// should clear any pause the user had applied, so re-enabling later starts
-	// from a clean slate rather than silently staying paused.
-	//
-	// Adjusted during render rather than in an effect: React re-runs this
-	// component immediately and never commits the stale value, where an effect
-	// would paint one frame with the wrong playing state first.
-	const [lastEnabled, setLastEnabled] = useState(enabled);
-	if (lastEnabled !== enabled) {
-		setLastEnabled(enabled);
-		setWanted(enabled);
-	}
+  // Turning `autoPlay` on after the fact should start it, and turning it off
+  // should clear any pause the user had applied, so re-enabling later starts
+  // from a clean slate rather than silently staying paused.
+  //
+  // Adjusted during render rather than in an effect: React re-runs this
+  // component immediately and never commits the stale value, where an effect
+  // would paint one frame with the wrong playing state first.
+  const [lastEnabled, setLastEnabled] = useState(enabled);
+  if (lastEnabled !== enabled) {
+    setLastEnabled(enabled);
+    setWanted(enabled);
+  }
 
-	useEffect(() => {
-		const handler = (status: AppStateStatus) => {
-			setAppActive(status === "active");
-		};
-		const subscription = AppState.addEventListener("change", handler);
-		return () => {
-			subscription.remove();
-		};
-	}, []);
+  useEffect(() => {
+    const handler = (status: AppStateStatus) => {
+      setAppActive(status === 'active');
+    };
+    const subscription = AppState.addEventListener('change', handler);
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
-	const running = enabled && wanted && appActive && !isDragging;
+  const running = enabled && wanted && appActive && !isDragging;
 
-	useEffect(() => {
-		if (!running || interval <= 0) {
-			return;
-		}
-		const id = setInterval(() => {
-			onTickRef.current();
-		}, interval);
-		return () => {
-			clearInterval(id);
-		};
-	}, [running, interval]);
+  useEffect(() => {
+    if (!running || interval <= 0) {
+      return;
+    }
+    const id = setInterval(() => {
+      onTickRef.current();
+    }, interval);
+    return () => {
+      clearInterval(id);
+    };
+  }, [running, interval]);
 
-	const play = useCallback(() => {
-		setWanted(true);
-	}, []);
-	const pause = useCallback(() => {
-		setWanted(false);
-	}, []);
+  const play = useCallback(() => {
+    setWanted(true);
+  }, []);
+  const pause = useCallback(() => {
+    setWanted(false);
+  }, []);
 
-	return { isPlaying: running, play, pause };
+  return { isPlaying: running, play, pause };
 }

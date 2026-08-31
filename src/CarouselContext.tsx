@@ -1,6 +1,6 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext } from 'react';
 
-import type { CarouselContextValue } from "./types";
+import type { CarouselContextValue } from './types';
 
 const CarouselContext = createContext<CarouselContextValue | null>(null);
 
@@ -28,14 +28,14 @@ export const CarouselProvider = CarouselContext.Provider;
  * much later as an unexplained "cannot read property 'page' of null".
  */
 export function useCarousel(): CarouselContextValue {
-	const value = useContext(CarouselContext);
-	if (value === null) {
-		throw new Error(
-			"useCarousel must be called inside a <Carousel>. Render your chrome as a child of the " +
-				"carousel, pass it through the `components` prop, or wrap it in <CarouselProvider>.",
-		);
-	}
-	return value;
+  const value = useContext(CarouselContext);
+  if (value === null) {
+    throw new Error(
+      'useCarousel must be called inside a <Carousel>. Render your chrome as a child of the ' +
+        'carousel, pass it through the `components` prop, or wrap it in <CarouselProvider>.',
+    );
+  }
+  return value;
 }
 
 /**
@@ -43,5 +43,5 @@ export function useCarousel(): CarouselContextValue {
  * throwing — for chrome that is meant to work both inside and outside one.
  */
 export function useCarouselOptional(): CarouselContextValue | null {
-	return useContext(CarouselContext);
+  return useContext(CarouselContext);
 }

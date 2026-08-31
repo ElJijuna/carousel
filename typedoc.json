@@ -1,10 +1,10 @@
 {
-	"$schema": "https://typedoc.org/schema.json",
-	"extends": ["super-configs/typedoc"],
-	"entryPoints": ["src/index.ts"],
-	"out": "docs/api",
-	"readme": "README.md",
-	"name": "@real-native/carousel",
-	"exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.stories.tsx"],
-	"tsconfig": "tsconfig.build.json"
+  "$schema": "https://typedoc.org/schema.json",
+  "extends": ["super-configs/typedoc"],
+  "entryPoints": ["src/index.ts"],
+  "out": "docs/api",
+  "readme": "README.md",
+  "name": "@real-native/carousel",
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.stories.tsx"],
+  "tsconfig": "tsconfig.build.json"
 }

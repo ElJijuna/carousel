@@ -1,7 +1,7 @@
-import { createContext, useContext, useSyncExternalStore } from "react";
+import { createContext, useContext, useSyncExternalStore } from 'react';
 
-import type { SlideStore } from "./hooks/useSlideStore";
-import type { CarouselSlideState } from "./types";
+import type { SlideStore } from './hooks/useSlideStore';
+import type { CarouselSlideState } from './types';
 
 const SlideStoreContext = createContext<SlideStore | null>(null);
 
@@ -38,14 +38,12 @@ export const SlideStoreProvider = SlideStoreContext.Provider;
  * @throws if called outside a `Carousel`.
  */
 export function useCarouselSlide(index: number): CarouselSlideState {
-	const store = useContext(SlideStoreContext);
-	if (store === null) {
-		throw new Error(
-			"useCarouselSlide must be called inside a <Carousel>. Render it from a " +
-				"slide — either as a child or from `renderItem`.",
-		);
-	}
-	return useSyncExternalStore(store.subscribe, () =>
-		store.getDerivedForIndex(index),
-	);
+  const store = useContext(SlideStoreContext);
+  if (store === null) {
+    throw new Error(
+      'useCarouselSlide must be called inside a <Carousel>. Render it from a ' +
+        'slide — either as a child or from `renderItem`.',
+    );
+  }
+  return useSyncExternalStore(store.subscribe, () => store.getDerivedForIndex(index));
 }

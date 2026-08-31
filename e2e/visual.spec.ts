@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from '@playwright/test';
 
-import { openStory } from "./helpers";
+import { openStory } from './helpers';
 
 /**
  * Visual regression for the stories whose whole point is how they look.
@@ -17,26 +17,20 @@ import { openStory } from "./helpers";
  */
 
 /** Stories that exist to show a layout, with the id Storybook gives them. */
-const looks = [
-	"basic",
-	"with-arrows",
-	"split-cards",
-	"credit-cards",
-	"page-layout",
-] as const;
+const looks = ['basic', 'with-arrows', 'split-cards', 'credit-cards', 'page-layout'] as const;
 
 for (const story of looks) {
-	test(`${story} looks the way it did`, async ({ page }) => {
-		await openStory(page, story);
-		// The track animates into place on mount, and the images are data URIs
-		// that decode a frame later.
-		await expect(page.getByTestId("carousel-track")).toBeVisible();
-		await page.waitForTimeout(500);
+  test(`${story} looks the way it did`, async ({ page }) => {
+    await openStory(page, story);
+    // The track animates into place on mount, and the images are data URIs
+    // that decode a frame later.
+    await expect(page.getByTestId('carousel-track')).toBeVisible();
+    await page.waitForTimeout(500);
 
-		await expect(page).toHaveScreenshot(`${story}.png`, {
-			// Rules out a caret or an in-flight transition being the difference.
-			animations: "disabled",
-			caret: "hide",
-		});
-	});
+    await expect(page).toHaveScreenshot(`${story}.png`, {
+      // Rules out a caret or an in-flight transition being the difference.
+      animations: 'disabled',
+      caret: 'hide',
+    });
+  });
 }

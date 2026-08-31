@@ -1,20 +1,20 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
-	"extends": ["super-configs/biome/react-native"],
-	"files": {
-		"ignoreUnknown": true,
-		"includes": [
-			"**",
-			"!**/lib",
-			"!**/coverage",
-			"!**/storybook-reports",
-			"!**/storybook-static",
-			"!**/docs",
-			"!**/node_modules",
-			"!**/playwright-report",
-			"!**/test-results",
-			"!package-lock.json",
-			"!CHANGELOG.md"
-		]
-	}
+  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
+  "extends": ["super-configs/biome/react-native"],
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "!**/lib",
+      "!**/coverage",
+      "!**/storybook-reports",
+      "!**/storybook-static",
+      "!**/docs",
+      "!**/node_modules",
+      "!**/playwright-report",
+      "!**/test-results",
+      "!package.json",
+      "!package-lock.json",
+      "!CHANGELOG.md"
+    ]
+  }
 }

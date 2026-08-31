@@ -9,7 +9,7 @@
  */
 
 /** What a handled key press asks the carousel to do. */
-export type CarouselKeyAction = "next" | "previous" | "first" | "last";
+export type CarouselKeyAction = 'next' | 'previous' | 'first' | 'last';
 
 /**
  * The action a key press maps to, or `null` for a key the carousel does not
@@ -20,29 +20,26 @@ export type CarouselKeyAction = "next" | "previous" | "first" | "last";
  * in this library, but a key named for a direction means the direction the user
  * sees, and in a right-to-left deck the next page is to the left.
  */
-export const keyAction = (
-	key: string,
-	isRTL: boolean,
-): CarouselKeyAction | null => {
-	switch (key) {
-		case "ArrowRight":
-			return isRTL ? "previous" : "next";
-		case "ArrowLeft":
-			return isRTL ? "next" : "previous";
-		case "Home":
-			return "first";
-		case "End":
-			return "last";
-		default:
-			return null;
-	}
+export const keyAction = (key: string, isRTL: boolean): CarouselKeyAction | null => {
+  switch (key) {
+    case 'ArrowRight':
+      return isRTL ? 'previous' : 'next';
+    case 'ArrowLeft':
+      return isRTL ? 'next' : 'previous';
+    case 'Home':
+      return 'first';
+    case 'End':
+      return 'last';
+    default:
+      return null;
+  }
 };
 
 /** The navigation a key press can reach. */
 export interface CarouselKeyActions {
-	next: () => void;
-	previous: () => void;
-	goTo: (page: number) => void;
+  next: () => void;
+  previous: () => void;
+  goTo: (page: number) => void;
 }
 
 /**
@@ -53,22 +50,22 @@ export interface CarouselKeyActions {
  * it does not act on.
  */
 export const runKeyAction = (
-	key: string,
-	isRTL: boolean,
-	pageCount: number,
-	actions: CarouselKeyActions,
+  key: string,
+  isRTL: boolean,
+  pageCount: number,
+  actions: CarouselKeyActions,
 ): boolean => {
-	const action = keyAction(key, isRTL);
-	if (action === null) {
-		return false;
-	}
+  const action = keyAction(key, isRTL);
+  if (action === null) {
+    return false;
+  }
 
-	if (action === "next") {
-		actions.next();
-	} else if (action === "previous") {
-		actions.previous();
-	} else {
-		actions.goTo(action === "first" ? 0 : pageCount - 1);
-	}
-	return true;
+  if (action === 'next') {
+    actions.next();
+  } else if (action === 'previous') {
+    actions.previous();
+  } else {
+    actions.goTo(action === 'first' ? 0 : pageCount - 1);
+  }
+  return true;
 };
