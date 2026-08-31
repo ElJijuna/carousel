@@ -35,6 +35,9 @@ jobs:
       - name: Biome
         run: npm run format:check
 
+      - name: Markdownlint
+        run: npm run lint:md
+
   commitlint:
     name: Commit messages
     runs-on: ubuntu-latest
