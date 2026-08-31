@@ -191,10 +191,9 @@ const styles = StyleSheet.create({
 	splitFooterLink: { fontSize: 12, fontWeight: "600", color: palette.accent },
 
 	pageSlide: {
-		// A definite height rather than `flex: 1`: the track sizes itself to its
-		// content, so the slide is what decides how much of the screen the
-		// carousel takes.
-		height: 480,
+		// No height: the carousel is given a bounded one by the screen, so the
+		// slide stretches to the track and the whole page lays itself out.
+		flex: 1,
 		paddingHorizontal: 24,
 		alignItems: "center",
 		justifyContent: "center",

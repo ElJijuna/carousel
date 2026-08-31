@@ -201,6 +201,31 @@ slideWidth = (containerWidth - 2 × peek - (visibleSlides - 1) × spacing) / vis
 When the slide count is not a multiple of `visibleSlides`, the last page holds the remainder and
 rests flush against the trailing edge rather than scrolling into empty space.
 
+### Height
+
+Width is measured; height is not. By default the carousel is as tall as its slides, which is what
+a banner or a row of cards wants.
+
+Give it a **bounded height** and it fills instead — the track takes whatever the `above` / `below`
+slots leave, and the slides stretch to the track. That is what a carousel used as the page itself
+needs, with a top bar above it and its dots pinned to the bottom:
+
+```tsx
+<View style={{ flex: 1 }}>
+  <TopBar />
+  <Carousel
+    style={{ flex: 1 }}                       // bounded: fills the screen below the bar
+    components={{ Pagination: BottomBar }}
+    slots={{ pagination: "below" }}
+  >
+    {steps}                                   // each slide `flex: 1`, stretched to the track
+  </Carousel>
+</View>
+```
+
+Nothing changes for the default case: with an auto height there is no free space to distribute,
+so the same carousel in an ordinary column is still sized by its slides.
+
 ---
 
 ## Responsive props
@@ -644,8 +669,33 @@ npm run test          # Jest + React Native Testing Library
 npm run test:coverage # …with the 90% threshold enforced
 npm run storybook     # Storybook on react-native-web
 npm run test:e2e      # Playwright, against that Storybook
+npm run test:visual   # Playwright, comparing screenshots of the layout stories
 npm run build         # react-native-builder-bob
 npm run docs          # TypeDoc
+```
+
+### Visual regression
+
+`npm run test:visual` renders the stories whose subject is a layout — the cards, the page-level
+screen — and compares them against the baselines in `e2e/__screenshots__/<platform>/`. It is a
+separate Playwright project, so `npm run test:e2e` never depends on pixels.
+
+Baselines are **per platform**: Chrome renders the same page with different fonts and antialiasing
+on macOS and on Linux, and a single shared baseline would either be permanently red or so tolerant
+that it catches nothing. Regenerate yours after an intentional change, and read the diff before
+committing it:
+
+```bash
+npm run test:visual -- --update-snapshots
+```
+
+CI does not gate on this yet, because the runner is Linux and only the macOS baselines are
+committed. To make it a gate, generate the Linux set once in the pinned browser image and commit
+it, then run the same image in the workflow:
+
+```bash
+docker run --rm -v "$PWD":/work -w /work mcr.microsoft.com/playwright:v1.62.1-noble \
+  bash -c "npm ci && npm run test:visual -- --update-snapshots"
 ```
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`,

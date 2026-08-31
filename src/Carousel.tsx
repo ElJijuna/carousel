@@ -62,7 +62,17 @@ const styles = StyleSheet.create({
 	// `position: relative` is the default, but naming it here is what makes the
 	// absolutely-positioned overlay slots below resolve against the track rather
 	// than against whatever ancestor happens to be positioned.
-	trackWrapper: { position: "relative" },
+	//
+	// The flex pair is what lets a page-level carousel work: given a bounded
+	// height — `style={{ flex: 1 }}` inside a screen, or an explicit one — the
+	// track takes the room the `above`/`below` slots leave, so the indicator row
+	// sits at the bottom of the screen rather than under the slides. When the
+	// height is auto, as it is by default, there is no free space to hand out
+	// and both are inert.
+	trackWrapper: { position: "relative", flexGrow: 1, flexShrink: 1 },
+	// Same bargain one level down: the scroller fills the wrapper when there is
+	// height to fill, and is sized by its slides when there is not.
+	track: { flexGrow: 1, flexShrink: 1 },
 	overlay: {
 		position: "absolute",
 		top: 0,
@@ -458,7 +468,7 @@ function CarouselImpl<TItem>(
 		disableIntervalMomentum: true,
 		scrollEventThrottle: 16,
 		contentContainerStyle,
-		style: [webSnapContainer(resolvedPeek), trackStyle],
+		style: [styles.track, webSnapContainer(resolvedPeek), trackStyle],
 		testID: testID === undefined ? undefined : `${testID}-track`,
 		onScroll: bridge.onScroll,
 		onMomentumScrollBegin: bridge.onMomentumScrollBegin,

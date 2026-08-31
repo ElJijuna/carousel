@@ -71,10 +71,9 @@ const styles = StyleSheet.create({
 		borderBottomColor: palette.track,
 	},
 	topBarTitle: { fontSize: 15, fontWeight: "600", color: palette.ink },
-	// `justifyContent` is what pins the footer to the bottom of the screen: the
-	// carousel fills the space left by the top bar, the track keeps its content
-	// height at the top, and the pagination slot is pushed to the far end.
-	pageCarousel: { flex: 1, justifyContent: "space-between" },
+	// The carousel fills the space the top bar leaves, and the track fills what
+	// the footer leaves inside that — no fixed heights anywhere in this screen.
+	pageCarousel: { flex: 1 },
 	pageFooter: {
 		flexDirection: "row",
 		alignItems: "center",

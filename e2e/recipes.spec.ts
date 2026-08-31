@@ -102,6 +102,33 @@ test.describe("page layout", () => {
 		await expectSelectedPage(page, 1);
 	});
 
+	test("the track fills the height the screen gives it", async ({ page }) => {
+		await openStory(page, "page-layout");
+
+		const heights = await page.evaluate(() => {
+			const box = (selector: string) =>
+				document.querySelector(selector)?.getBoundingClientRect().height ?? 0;
+			const carousel = document.querySelector('[data-testid="carousel"]');
+			return {
+				screen: carousel?.parentElement?.getBoundingClientRect().height ?? 0,
+				carousel: box('[data-testid="carousel"]'),
+				track: box('[data-testid="carousel-track"]'),
+				slide: box('[data-testid^="page-"]'),
+				footer: box('[data-testid="next-page"]'),
+			};
+		});
+
+		// Nothing in this screen states a height: the carousel takes what the top
+		// bar leaves, the track takes what the footer leaves, and the slide
+		// stretches to the track. A track sized by its content would come out
+		// shorter than its own share of the screen.
+		expect(heights.track).toBeGreaterThan(heights.screen / 2);
+		expect(heights.slide).toBe(heights.track);
+		expect(heights.track + heights.footer).toBeLessThanOrEqual(
+			heights.carousel,
+		);
+	});
+
 	test("the primary action becomes a restart on the last page", async ({
 		page,
 	}) => {
