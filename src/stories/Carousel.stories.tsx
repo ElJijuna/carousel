@@ -13,8 +13,10 @@ import {
 	MockFraction,
 	MockPlayPause,
 	MockSlide,
+	MockSplitCard,
 	mockCards,
 	mockData,
+	mockFeatures,
 	mockSlides,
 	palette,
 } from "./mocks";
@@ -96,8 +98,22 @@ const meta = {
 		// Storybook can only offer as a JSON editor. Every story but `Responsive`
 		// passes the plain number, so the number control is the useful one; the
 		// responsive stories put the object editor back themselves.
-		visibleSlides: { control: { type: "number", min: 1, max: 6, step: 1 } },
-		peek: { control: { type: "range", min: 0, max: 96, step: 4 } },
+		//
+		// `type` is narrowed to `number` as well, not just `control`: Storybook
+		// coerces `?args=visibleSlides:2` against the *type*, and silently drops
+		// the value when that type is a union it cannot parse — which is what made
+		// a shared control link arrive with the control back at its default.
+		// `table.type` keeps the docs showing the real signature.
+		visibleSlides: {
+			type: { name: "number" },
+			table: { type: { summary: "number | ResponsiveMap<number>" } },
+			control: { type: "number", min: 1, max: 6, step: 1 },
+		},
+		peek: {
+			type: { name: "number" },
+			table: { type: { summary: "number | ResponsiveMap<number>" } },
+			control: { type: "range", min: 0, max: 96, step: 4 },
+		},
 		spacing: { control: { type: "range", min: 0, max: 48, step: 2 } },
 		interval: { control: { type: "range", min: 500, max: 8000, step: 500 } },
 		page: { control: { type: "number", min: 0, step: 1 } },
@@ -439,6 +455,31 @@ export const CreditCards: Story = {
 			keyExtractor={(card) => card.id}
 			renderItem={({ item }) => <MockCreditCard card={item} />}
 			slideLabel={(index, total) => `Card ${index + 1} of ${total}`}
+		/>
+	),
+};
+
+/**
+ * Split cards: title, description and footer on the left half, artwork on the
+ * right. Both halves are `flex: 1`, so the split follows the slide width the
+ * carousel computes — drop `visibleSlides` to 2 in the controls and each card
+ * stays split, just narrower.
+ *
+ * Rendered through `render` so the item generic comes from `mockFeatures`.
+ */
+export const SplitCards: Story = {
+	args: {
+		testID: "carousel",
+		spacing: 16,
+		peek: 28,
+		components: { Arrow: MockArrow, Dot: MockDot },
+	},
+	render: (args) => (
+		<Carousel
+			{...args}
+			data={mockFeatures}
+			keyExtractor={(feature) => feature.id}
+			renderItem={({ item }) => <MockSplitCard feature={item} />}
 		/>
 	),
 };

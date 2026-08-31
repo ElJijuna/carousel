@@ -9,14 +9,14 @@
  * @module
  */
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import type {
 	CarouselArrowSlotProps,
 	CarouselDotSlotProps,
 	CarouselPaginationSlotProps,
 	CarouselPlayPauseSlotProps,
 } from "../types";
+import { mockImageLabels, mockImages } from "./mockImages";
 
 /** Shared colours for the mocked chrome, so the stories stay literal-free. */
 export const palette = {
@@ -31,6 +31,8 @@ export const palette = {
 	shadow: "#000000",
 	cardInk: "#f8fafc",
 	cardChip: "#e2c275",
+	splitBorder: "#e5e7eb",
+	splitEyebrow: "#2563eb",
 };
 
 const styles = StyleSheet.create({
@@ -144,6 +146,47 @@ const styles = StyleSheet.create({
 		color: palette.cardInk,
 		fontVariant: ["tabular-nums"],
 	},
+
+	split: {
+		flexDirection: "row",
+		height: 220,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: palette.splitBorder,
+		backgroundColor: palette.surface,
+		// The image runs to the card's edge, so the corners have to clip it.
+		overflow: "hidden",
+	},
+	// Both halves are `flex: 1` of the same row, which is what makes the split
+	// track the slide width instead of a hard-coded number.
+	splitBody: { flex: 1, padding: 16, justifyContent: "space-between" },
+	splitText: { flexShrink: 1, overflow: "hidden" },
+	splitImage: { flex: 1, height: "100%" },
+	splitEyebrow: {
+		fontSize: 11,
+		fontWeight: "700",
+		letterSpacing: 1,
+		color: palette.splitEyebrow,
+		marginBottom: 6,
+	},
+	splitTitle: { fontSize: 18, fontWeight: "600", color: palette.ink },
+	splitDescription: {
+		fontSize: 13,
+		lineHeight: 19,
+		color: palette.caption,
+		marginTop: 6,
+	},
+	splitFooter: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		borderTopWidth: 1,
+		borderTopColor: palette.splitBorder,
+		paddingTop: 10,
+		marginTop: 12,
+	},
+	splitFooterText: { fontSize: 12, color: palette.caption },
+	splitFooterLink: { fontSize: 12, fontWeight: "600", color: palette.accent },
 });
 
 /** Round arrow button. Goes translucent rather than unmounting at the ends. */
@@ -351,5 +394,99 @@ export const mockCards: readonly MockCard[] = [
 		holder: "A. MARTINEZ",
 		expires: "06/30",
 		background: "#047857",
+	},
+];
+
+/** One entry in the split-card story. */
+export interface MockFeature {
+	id: string;
+	/** Small label above the title. */
+	eyebrow: string;
+	title: string;
+	description: string;
+	/** Left-hand footer text — a date, a reading time, a status. */
+	footer: string;
+	/** Which entry of {@link mockImages} fills the right half. */
+	image: keyof typeof mockImages;
+}
+
+/**
+ * A card split down the middle: text on the left, artwork on the right.
+ *
+ * Both halves are `flex: 1` siblings in a row, so the split follows whatever
+ * width the carousel hands the slide — including the narrower slides you get
+ * from `visibleSlides` or `peek` — rather than a fixed pixel column.
+ */
+export const MockSplitCard = ({ feature }: { feature: MockFeature }) => (
+	<View style={styles.split} testID={`feature-${feature.id}`}>
+		<View style={styles.splitBody}>
+			{/*
+        The card is a fixed height and the text half narrows with the slide, so
+        both strings are clamped: without that, a narrow `visibleSlides` lets a
+        long description run straight through the footer.
+      */}
+			<View style={styles.splitText}>
+				<Text style={styles.splitEyebrow}>{feature.eyebrow.toUpperCase()}</Text>
+				<Text style={styles.splitTitle} numberOfLines={2}>
+					{feature.title}
+				</Text>
+				<Text style={styles.splitDescription} numberOfLines={3}>
+					{feature.description}
+				</Text>
+			</View>
+			<View style={styles.splitFooter}>
+				<Text style={styles.splitFooterText}>{feature.footer}</Text>
+				<Text style={styles.splitFooterLink}>Read more ›</Text>
+			</View>
+		</View>
+		<Image
+			testID={`feature-${feature.id}-image`}
+			style={styles.splitImage}
+			resizeMode="cover"
+			source={{ uri: mockImages[feature.image] }}
+			// Described rather than left decorative: the artwork is half the card,
+			// so a reader that skips it silently loses half of what is on screen.
+			accessibilityLabel={mockImageLabels[feature.image]}
+		/>
+	</View>
+);
+
+/** Four split cards, for the story of the same name. */
+export const mockFeatures: readonly MockFeature[] = [
+	{
+		id: "headless",
+		eyebrow: "Headless",
+		title: "Bring your own chrome",
+		description:
+			"The carousel draws nothing but the track. Arrows, dots and counters are components you pass in.",
+		footer: "3 min read",
+		image: "harbour",
+	},
+	{
+		id: "responsive",
+		eyebrow: "Responsive",
+		title: "Measured, not guessed",
+		description:
+			"Breakpoints resolve against the carousel's own width, so one in a sidebar adapts to the sidebar.",
+		footer: "4 min read",
+		image: "meadow",
+	},
+	{
+		id: "virtualized",
+		eyebrow: "Virtualized",
+		title: "Hundreds of slides, a few mounted",
+		description:
+			"Pass `data` and `renderItem` and the track becomes a FlatList without changing any behaviour.",
+		footer: "5 min read",
+		image: "dawn",
+	},
+	{
+		id: "accessible",
+		eyebrow: "Accessible",
+		title: "Labelled and announceable",
+		description:
+			"Every slot arrives with the label it needs, and page changes are announced as they happen.",
+		footer: "6 min read",
+		image: "dusk",
 	},
 ];
