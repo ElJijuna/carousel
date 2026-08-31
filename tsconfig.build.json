@@ -1,22 +1,22 @@
 {
-	"extends": "./tsconfig.json",
-	"compilerOptions": {
-		"noEmit": false,
-		"declaration": true,
-		"declarationMap": true,
-		"emitDeclarationOnly": true,
-		"types": []
-	},
-	"include": ["src"],
-	"exclude": [
-		"node_modules",
-		"lib",
-		"coverage",
-		"storybook-static",
-		"docs",
-		"src/**/*.test.ts",
-		"src/**/*.test.tsx",
-		"src/**/*.stories.tsx",
-		"src/stories"
-	]
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "types": []
+  },
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "lib",
+    "coverage",
+    "storybook-static",
+    "docs",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.stories.tsx",
+    "src/stories"
+  ]
 }

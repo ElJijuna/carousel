@@ -56,7 +56,10 @@ peerDependencies: react, react-native
 - [Responsive props](#responsive-props)
 - [The chrome slots](#the-chrome-slots)
 - [`useCarousel`](#usecarousel)
+- [Slide-level state: `useCarouselSlide`](#slide-level-state-usecarouselslide)
 - [Page state](#page-state)
+- [Page change events](#page-change-events)
+- [Interaction and progress events](#interaction-and-progress-events)
 - [Imperative control](#imperative-control)
 - [`loop` vs `infinite`](#loop-vs-infinite)
 - [Auto-play](#auto-play)
@@ -364,6 +367,60 @@ it returns `null` instead.
 
 ---
 
+## Slide-level state: `useCarouselSlide`
+
+`useCarousel` hands back carousel-wide state; `useCarouselSlide(index)` hands back **one slide's
+own** — whether it's active, whether any of it is on screen, and its continuous scroll progress —
+without re-rendering every other slide when any of that changes.
+
+```tsx
+import { Carousel, useCarouselSlide } from '@real-native/carousel';
+
+const Slide = ({ index, photo }: { index: number; photo: Photo }) => {
+  const { isActive, progress } = useCarouselSlide(index);
+  return (
+    <View style={{ opacity: isActive ? 1 : 0.6, transform: [{ scale: 1 - Math.abs(progress) * 0.1 }] }}>
+      <Image source={{ uri: photo.uri }} />
+    </View>
+  );
+};
+
+<Carousel
+  data={photos}
+  renderItem={({ item, index }) => <Slide index={index} photo={item} />}
+/>;
+```
+
+It returns:
+
+```ts
+{
+  index,      // the index you passed in, echoed back
+  isActive,   // this slide's page is the current one
+  isVisible,  // isActive, plus a neighbour peeking in when `peek` is set
+  progress,   // 0 when active, growing towards ±1 off-screen, pinned at ±1 beyond that
+}
+```
+
+`renderItem` already hands you an `index`; for `children` slides, track your own the way you would
+for any other per-item identity. Call the hook from a real component — not inline inside
+`renderItem` itself, which React invokes from `FlatList`'s own class-based cell renderer, not a
+place hooks can run.
+
+**Why not just recompute `isActive` in `renderItem`?** That's exactly what `trackActiveSlides` does,
+and its own docs explain the cost: recomputing `isActive` for *every* slide on *every* page change
+defeats slide memoization, which is why it's off by default. `useCarouselSlide` subscribes through a
+small store instead of a prop, so a page change only re-renders the slides whose own `isActive` or
+`isVisible` actually flipped. `trackActiveSlides` still exists for the rarer case where you need
+`isActive` synchronously inside `renderItem` itself, at render time, rather than as a hook one level
+down — migrate to `useCarouselSlide` when you don't need that.
+
+`progress` is continuous, so a slide that reads it re-renders on every scroll frame **while within
+one page of active** — that's the cost of building a live animation from it, and it's scoped to the
+slides near the viewport; one more than a page away is pinned at `±1` and stops re-rendering.
+
+---
+
 ## Page state
 
 **Uncontrolled by default.** Use `defaultPage` to start somewhere other than the first page; it is
@@ -388,6 +445,96 @@ another.
 `onPageChanged` fires **once per actual page change**. A swipe emits a scroll event per frame, and
 navigating past a non-wrapping end clamps back onto the current page; neither re-notifies you of a
 page you are already on.
+
+---
+
+## Page change events
+
+`onPageChanged`'s second argument says **why** the page changed, so a consumer can play a sound,
+fire analytics, or trigger haptic feedback without the carousel depending on any of those itself —
+the carousel never implements haptics; it just gives you enough to implement your own:
+
+```tsx
+<Carousel
+  onPageChanged={(page, event) => {
+    if (event.userInitiated) {
+      Haptics.selectionAsync(); // your choice of haptics library
+    }
+    analytics.track('carousel_page_changed', event);
+  }}
+>
+  {slides}
+</Carousel>;
+```
+
+`event` is:
+
+```ts
+{
+  page,           // the new page — same value as the first argument
+  previousPage,   // the page it moved from
+  source,         // what triggered the move
+  userInitiated,  // shorthand for `source !== 'autoplay'`
+}
+```
+
+`source` is one of:
+
+| Source | Fires for |
+| --- | --- |
+| `'drag'` | A swipe, flick, or free scroll — touch, trackpad, mouse wheel. |
+| `'next'` / `'previous'` | `next()` / `previous()`, including the built-in `Arrow` slots and the keyboard arrow keys. |
+| `'pagination'` | `goTo()` / `goToSlide()`, including the built-in `Dot` and `Pagination` slots and the keyboard Home/End keys. |
+| `'autoplay'` | An automatic `autoPlay` tick. |
+| `'imperative'` | A call through the `ref` (`CarouselHandle`), from outside the carousel's own chrome. |
+
+The second argument is purely additive — existing `onPageChanged={(page) => ...}` callbacks that
+only take the page keep working unchanged.
+
+---
+
+## Interaction and progress events
+
+Beyond page changes, the carousel reports the underlying gesture and scroll lifecycle, so you can
+build indicators, parallax, or other custom animation without the carousel depending on an
+animation library:
+
+```tsx
+<Carousel
+  onDragStart={() => console.log('finger down')}
+  onDragEnd={() => console.log('finger up')}
+  onSnapStart={() => console.log('settling towards a page')}
+  onSnapEnd={() => console.log('at rest')}
+  onProgress={({ page, absoluteProgress, offset }) => {
+    // Drive your own Animated.Value, Reanimated shared value, or state from this —
+    // called directly from the scroll handler, not through state, so it never
+    // causes the carousel (or anything else) to re-render.
+    indicatorPosition.setValue(absoluteProgress);
+  }}
+>
+  {slides}
+</Carousel>;
+```
+
+| Prop | Fires |
+| --- | --- |
+| `onDragStart` / `onDragEnd` | The user grabs the track / lets go of it. |
+| `onSnapStart` / `onSnapEnd` | The track starts animating towards a resting page / comes to rest on one — a released drag settling, or a `next` / `previous` / `goTo` / `autoPlay` / imperative move. |
+| `onProgress` | Every scroll frame, during drags, flings and animated programmatic moves alike. |
+
+`onProgress`'s argument is:
+
+```ts
+{
+  page,             // nearest page to the current scroll position
+  absoluteProgress, // continuous position in page units — whole at rest, fractional mid-scroll
+  offset,           // raw scroll offset in dp
+}
+```
+
+Nothing here is throttled beyond `scrollEventThrottle={16}` on the native side, and none of it goes
+through React state — the carousel calls your callback directly, so a 60fps indicator costs nothing
+on the carousel's own render.
 
 ---
 
@@ -419,6 +566,10 @@ Every method takes the same path as the rendered chrome, so wrapping, reduced mo
 fire-once `onPageChanged` rule behave identically however the move started. In particular the
 handle **reports** rather than seizes: with a controlled `page`, `next()` calls `onPageChanged` and
 leaves the prop to you.
+
+A move made through the handle reports [`source: 'imperative'`](#page-change-events) — distinct
+from `'next'` / `'previous'` / `'pagination'`, which are reserved for the same actions taken through
+the carousel's own rendered chrome or the `useCarousel` hook.
 
 The readable members are getters, not a frozen snapshot, so `handle.page` is already right on the
 line after `next()` instead of a render later.
@@ -534,6 +685,11 @@ The carousel is built to stay out of the way:
   re-layout does not re-render every slide.
 - **`isActive` is opt-in** (`trackActiveSlides`) precisely so slide memoization survives by
   default.
+- **`onProgress` bypasses React state entirely.** It's called directly from the scroll handler, so
+  a 60fps indicator or parallax effect never re-renders the carousel.
+- **`useCarouselSlide` subscribes through a store, not context.** A page change re-renders only the
+  slides whose own `isActive` or `isVisible` actually flipped, and `progress` is pinned once a slide
+  is more than a page away — so it stays cheap across a long deck.
 
 For long decks prefer `data`/`renderItem` over `children`: `children` mounts every slide.
 
@@ -579,7 +735,7 @@ Full generated docs: `npm run docs` (TypeDoc → `docs/api`).
 | `infinite` | `boolean` | `false` | Wrap seamlessly, by cloning. Implies `loop`. |
 | `page` | `number` | — | Controlled page index. |
 | `defaultPage` | `number` | `0` | Starting page when uncontrolled. |
-| `onPageChanged` | `(page: number) => void` | — | Fires once per actual change. |
+| `onPageChanged` | `(page: number, event: CarouselPageChangeEvent) => void` | — | Fires once per actual change. |
 | `autoPlay` | `boolean` | `false` | Rotate automatically. |
 | `interval` | `number` | `3000` | Milliseconds between advances. |
 | `components` | `CarouselComponents` | `{}` | The chrome to render. |
@@ -598,8 +754,10 @@ Full generated docs: `npm run docs` (TypeDoc → `docs/api`).
 | `nextLabel` | `string` | `'Next slide'` | Next arrow. |
 | `pauseLabel` | `string` | `'Pause automatic rotation'` | Pause control. |
 | `playLabel` | `string` | `'Resume automatic rotation'` | Play control. |
-| `trackActiveSlides` | `boolean` | `false` | Compute `isActive` per slide. |
+| `trackActiveSlides` | `boolean` | `false` | Compute `isActive` per slide in `renderItem`. See `useCarouselSlide` for the usual alternative. |
 | `onDragStart` / `onDragEnd` | `() => void` | — | Drag lifecycle. |
+| `onSnapStart` / `onSnapEnd` | `() => void` | — | Snap lifecycle — settling towards a page / at rest on one. |
+| `onProgress` | `(event: CarouselProgressEvent) => void` | — | Raw scroll position, on every frame. |
 | `testID` | `string` | — | On the outer view; the track gets `` `${testID}-track` ``. |
 
 ### Exports
@@ -609,6 +767,7 @@ import {
   Carousel,
   useCarousel,
   useCarouselOptional,
+  useCarouselSlide,
   type CarouselActions,
   type CarouselArrowSlotProps,
   type CarouselComponents,
@@ -616,11 +775,15 @@ import {
   type CarouselDotSlotProps,
   type CarouselHandle,
   type CarouselNavigateOptions,
+  type CarouselPageChangeEvent,
+  type CarouselPageChangeSource,
   type CarouselPaginationSlotProps,
   type CarouselPlayPauseSlotProps,
+  type CarouselProgressEvent,
   type CarouselProps,
   type CarouselRenderItem,
   type CarouselRenderItemInfo,
+  type CarouselSlideState,
   type CarouselSlotLayout,
   type CarouselState,
   type ResponsiveMap,

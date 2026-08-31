@@ -1,1 +1,1 @@
-export { default } from "super-configs/commitlint";
+export { default } from 'super-configs/commitlint';
