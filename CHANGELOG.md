@@ -1,3 +1,9 @@
+## [0.4.0](https://github.com/ElJijuna/carousel/compare/v0.3.0...v0.4.0) (2026-08-31)
+
+### Features
+
+* introduce CarouselSlideContext and useCarouselSlide hook for slide state management ([7f4dcde](https://github.com/ElJijuna/carousel/commit/7f4dcdeeaece2bb12b4e0b2e69305f142d569bd8))
+
 ## [0.3.0](https://github.com/ElJijuna/carousel/compare/v0.2.0...v0.3.0) (2026-08-31)
 
 ### Features
