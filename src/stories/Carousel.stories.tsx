@@ -7,10 +7,12 @@ import { useCarousel } from "../CarouselContext";
 import type { CarouselHandle } from "../types";
 import {
 	MockArrow,
+	MockCreditCard,
 	MockDot,
 	MockFraction,
 	MockPlayPause,
 	MockSlide,
+	mockCards,
 	mockData,
 	mockSlides,
 	palette,
@@ -333,4 +335,31 @@ export const CustomChromeViaHook: Story = {
 		slots: { pagination: "below" },
 		children: mockSlides(5),
 	},
+};
+
+/**
+ * A wallet: one card per page, with a sliver of the neighbours showing so the
+ * deck reads as a stack you can flick through.
+ *
+ * `loop` rather than `infinite` — a wallet is a fixed, countable set of cards,
+ * and cloning one would show the same card twice.
+ *
+ * Rendered through `render` rather than `args` so `Carousel`'s item generic is
+ * inferred from `mockCards` instead of being pinned to `unknown` by `Meta`.
+ */
+export const CreditCards: Story = {
+	args: { testID: "carousel" },
+	render: () => (
+		<Carousel
+			testID="carousel"
+			loop
+			spacing={16}
+			peek={{ base: 36, 460: 20 }}
+			data={mockCards}
+			keyExtractor={(card) => card.id}
+			renderItem={({ item }) => <MockCreditCard card={item} />}
+			slideLabel={(index, total) => `Card ${index + 1} of ${total}`}
+			components={{ Arrow: MockArrow, Dot: MockDot }}
+		/>
+	),
 };

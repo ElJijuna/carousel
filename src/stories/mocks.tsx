@@ -29,6 +29,8 @@ export const palette = {
 	caption: "#4b5563",
 	track: "#e5e7eb",
 	shadow: "#000000",
+	cardInk: "#f8fafc",
+	cardChip: "#e2c275",
 };
 
 const styles = StyleSheet.create({
@@ -96,6 +98,55 @@ const styles = StyleSheet.create({
 	},
 	slideTitle: { fontSize: 22, fontWeight: "600", color: palette.ink },
 	slideCaption: { fontSize: 13, color: palette.caption, marginTop: 4 },
+
+	card: {
+		height: 190,
+		borderRadius: 16,
+		padding: 20,
+		justifyContent: "space-between",
+		shadowColor: palette.shadow,
+		shadowOpacity: 0.2,
+		shadowRadius: 10,
+		shadowOffset: { width: 0, height: 4 },
+		elevation: 4,
+	},
+	cardRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+	},
+	cardIssuer: { fontSize: 13, fontWeight: "600", color: palette.cardInk },
+	cardTier: {
+		fontSize: 11,
+		letterSpacing: 2,
+		color: palette.cardInk,
+		opacity: 0.8,
+	},
+	cardChip: {
+		width: 40,
+		height: 30,
+		borderRadius: 6,
+		backgroundColor: palette.cardChip,
+	},
+	cardNumber: {
+		fontSize: 18,
+		letterSpacing: 2,
+		color: palette.cardInk,
+		fontVariant: ["tabular-nums"],
+	},
+	cardLabel: {
+		fontSize: 9,
+		letterSpacing: 1,
+		color: palette.cardInk,
+		opacity: 0.7,
+		marginBottom: 2,
+	},
+	cardValue: {
+		fontSize: 13,
+		fontWeight: "600",
+		color: palette.cardInk,
+		fontVariant: ["tabular-nums"],
+	},
 });
 
 /** Round arrow button. Goes translucent rather than unmounting at the ends. */
@@ -217,3 +268,91 @@ export const mockSlides = (
 /** `n` mock records, for the virtualized `data` mode. */
 export const mockData = (count: number) =>
 	Array.from({ length: count }, (_, index) => ({ id: `item-${index}`, index }));
+
+/** One card in the wallet story. */
+export interface MockCard {
+	id: string;
+	/** Name printed top-left. Invented, like every value here. */
+	issuer: string;
+	/** Product tier, printed top-right. */
+	tier: string;
+	/** Last four digits — the only ones a real card UI may show. */
+	last4: string;
+	holder: string;
+	/** MM/YY. */
+	expires: string;
+	background: string;
+}
+
+/**
+ * A credit card slide.
+ *
+ * Every number below is fake and stays fake: a card carousel is the one place
+ * where the slide, not the carousel, decides what may be rendered, so only the
+ * last four digits are ever printed and the accessible name says the same.
+ */
+export const MockCreditCard = ({ card }: { card: MockCard }) => (
+	<View
+		testID={`card-${card.id}`}
+		accessible
+		accessibilityLabel={`${card.tier} card ending in ${card.last4}, expires ${card.expires}`}
+		style={[styles.card, { backgroundColor: card.background }]}
+	>
+		<View style={styles.cardRow}>
+			<Text style={styles.cardIssuer}>{card.issuer}</Text>
+			<Text style={styles.cardTier}>{card.tier.toUpperCase()}</Text>
+		</View>
+		<View style={styles.cardChip} />
+		<Text style={styles.cardNumber}>{`•••• •••• •••• ${card.last4}`}</Text>
+		<View style={styles.cardRow}>
+			<View>
+				<Text style={styles.cardLabel}>CARDHOLDER</Text>
+				<Text style={styles.cardValue}>{card.holder}</Text>
+			</View>
+			<View>
+				<Text style={styles.cardLabel}>EXPIRES</Text>
+				<Text style={styles.cardValue}>{card.expires}</Text>
+			</View>
+		</View>
+	</View>
+);
+
+/** A wallet's worth of fake cards, for the credit-card story. */
+export const mockCards: readonly MockCard[] = [
+	{
+		id: "platinum",
+		issuer: "Real Native Bank",
+		tier: "Platinum",
+		last4: "4242",
+		holder: "A. MARTINEZ",
+		expires: "08/29",
+		background: "#1f2937",
+	},
+	{
+		id: "gold",
+		issuer: "Real Native Bank",
+		tier: "Gold",
+		last4: "8210",
+		holder: "A. MARTINEZ",
+		expires: "11/27",
+		background: "#b45309",
+	},
+	{
+		id: "classic",
+		issuer: "Real Native Bank",
+		tier: "Classic",
+		last4: "0417",
+		holder: "A. MARTINEZ",
+		expires: "03/28",
+		background: "#1d4ed8",
+	},
+	{
+		id: "travel",
+		issuer: "Real Native Bank",
+		tier: "Travel",
+		last4: "9931",
+		holder: "A. MARTINEZ",
+		expires: "06/30",
+		background: "#047857",
+	},
+];
