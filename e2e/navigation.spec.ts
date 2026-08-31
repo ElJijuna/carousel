@@ -6,6 +6,7 @@ import {
 	pageWidth,
 	restingOffset,
 	scrollLeft,
+	track,
 } from "./helpers";
 
 test.describe("dots", () => {
@@ -111,5 +112,63 @@ test.describe("grouped pages", () => {
 		await expectSelectedPage(page, 1);
 		// Every slide stays mounted in the children mode; only the track moved.
 		await expect(page.getByTestId("slide-5")).toBeAttached();
+	});
+});
+
+test.describe("keyboard", () => {
+	test("the track takes focus, so a keyboard can reach it at all", async ({
+		page,
+	}) => {
+		await openStory(page, "basic");
+
+		// Tab from the top of the document rather than calling `focus()`: the
+		// point is that the track is *in* the tab order, which a scroll container
+		// is not by default.
+		await page.keyboard.press("Tab");
+
+		await expect(track(page)).toBeFocused();
+	});
+
+	test("arrow keys page the track", async ({ page }) => {
+		await openStory(page, "basic");
+		const width = await pageWidth(page);
+		await track(page).focus();
+
+		await page.keyboard.press("ArrowRight");
+		expect(await restingOffset(page)).toBe(width);
+		await expectSelectedPage(page, 1);
+
+		await page.keyboard.press("ArrowLeft");
+		expect(await restingOffset(page)).toBe(0);
+		await expectSelectedPage(page, 0);
+	});
+
+	test("Home and End jump to the ends", async ({ page }) => {
+		await openStory(page, "basic");
+		const width = await pageWidth(page);
+		await track(page).focus();
+
+		await page.keyboard.press("End");
+		expect(await restingOffset(page)).toBe(width * 3);
+		await expectSelectedPage(page, 3);
+
+		await page.keyboard.press("Home");
+		expect(await restingOffset(page)).toBe(0);
+		await expectSelectedPage(page, 0);
+	});
+
+	test("keys the carousel does not handle are left to the browser", async ({
+		page,
+	}) => {
+		await openStory(page, "basic");
+		await track(page).focus();
+
+		await page.keyboard.press("ArrowDown");
+		await page.keyboard.press("Enter");
+
+		// A vertical key on a horizontal deck must not page it, and must not be
+		// swallowed either — the browser keeps whatever it would have done.
+		expect(await scrollLeft(page)).toBe(0);
+		await expectSelectedPage(page, 0);
 	});
 });

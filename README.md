@@ -471,6 +471,14 @@ reads as broken rather than finished.
 - **Arrows report `disabled` rather than unmounting**, so focus is never dropped mid-navigation.
 - **Reduced motion is honoured.** With the OS setting on, every programmatic move jumps straight
   to the page instead of animating.
+- **The track is keyboard operable on web.** It takes focus — a scroll container is not in the tab
+  order by default, which leaves a pointer as the only way to move it — and pages with `←` / `→`,
+  jumping to the ends with `Home` / `End`. The arrows follow what the user *sees*, so they are
+  mirrored under `I18nManager.isRTL`. Any other key is left to the browser, never swallowed.
+- **Named containers carry a role on web.** The carousel, each slide and the indicator row are
+  `role="group"`, because ARIA drops a name on a role-less element: without it the
+  `accessibilityLabel`, `slideLabel` and `paginationLabel` you pass would be announced on native
+  and silently ignored in a browser.
 
 ---
 
@@ -520,7 +528,10 @@ Requires `react >= 18` and `react-native >= 0.74`.
 
 **On web**, `snapToOffsets` is a native-only prop, so the same snapping is expressed as CSS
 scroll-snap (`scroll-snap-type: x mandatory`, with snap points on page boundaries only). This is
-applied automatically under `Platform.OS === 'web'`.
+applied automatically under `Platform.OS === 'web'`. Two accessibility details are web-only for
+the same reason: the track is put in the tab order and handles arrow keys, and named containers
+are given `role="group"` — neither has a meaning on native, where a view is grouped by the
+platform and keys never reach a scroller.
 
 ---
 

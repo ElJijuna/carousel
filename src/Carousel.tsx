@@ -46,6 +46,7 @@ import {
 	stepTarget,
 	withClones,
 } from "./utils/geometry";
+import { runKeyAction } from "./utils/keyboard";
 
 const defaultPageLabel = (index: number) => `Page ${index + 1}`;
 const defaultSlideLabel = (index: number, total: number) =>
@@ -110,6 +111,25 @@ const webSnapSlide = (isPageStart: boolean): ViewStyle | null =>
 	IS_WEB
 		? ({ scrollSnapAlign: isPageStart ? "start" : "none" } as ViewStyle)
 		: null;
+
+/**
+ * A role for a container the carousel names.
+ *
+ * react-native-web turns `accessibilityLabel` into `aria-label`, and ARIA
+ * forbids a name on a role-less `div` — a screen reader drops it, so the
+ * carousel, its slides and its dot row would all go unnamed on the web. Native
+ * has no such rule, and a role there changes how the platform groups a view, so
+ * this stays web-only.
+ */
+const webGroup: { role?: "group" } = IS_WEB ? { role: "group" } : {};
+
+/** The event react-native-web hands `onKeyDown`, which RN's types do not model. */
+interface WebKeyEvent {
+	key: string;
+	target: unknown;
+	currentTarget: unknown;
+	preventDefault: () => void;
+}
 
 /** Whether a rendered slide position is one of the `infinite` clones. */
 const isCloneAt = (
@@ -399,6 +419,34 @@ function CarouselImpl<TItem>(
 		[trackActiveSlides, page, visible],
 	);
 
+	/**
+	 * Keyboard paging, for the one platform whose scroll container takes focus.
+	 *
+	 * A horizontal scroller that only a pointer can move is unreachable for a
+	 * keyboard user, and the browser's own arrow-key scrolling nudges the track a
+	 * few pixels into a snap point rather than paging — so the handled keys are
+	 * taken over, and every other key is left alone.
+	 */
+	const handleKeyDown = useCallback(
+		// React Native types `onKeyDown` for its own TV key events, which carry no
+		// `key` at all, so the web event is narrowed here rather than at the prop.
+		(keyEvent: unknown) => {
+			const event = keyEvent as WebKeyEvent;
+
+			// A control inside a slide keeps its own keys: only presses that land on
+			// the track itself are the carousel's to interpret.
+			if (event.target !== event.currentTarget) {
+				return;
+			}
+
+			const actions = { next, previous, goTo };
+			if (runKeyAction(event.key, I18nManager.isRTL, pageCount, actions)) {
+				event.preventDefault();
+			}
+		},
+		[next, previous, goTo, pageCount],
+	);
+
 	const scrollerProps = {
 		horizontal: true as const,
 		showsHorizontalScrollIndicator: false,
@@ -418,6 +466,10 @@ function CarouselImpl<TItem>(
 		onScrollBeginDrag: handleScrollBeginDrag,
 		onScrollEndDrag: handleScrollEndDrag,
 		onContentSizeChange: bridge.onContentSizeChange,
+		// `focusable` is what puts the track in the tab order — without it the
+		// scroll region is reachable by pointer only, which is the accessibility
+		// failure `onKeyDown` below exists to answer.
+		...(IS_WEB ? { focusable: true, onKeyDown: handleKeyDown } : {}),
 	};
 
 	const renderedData = useMemo(
@@ -431,6 +483,7 @@ function CarouselImpl<TItem>(
 			const clone = isCloneAt(index, geometry, slideCount);
 			return (
 				<View
+					{...webGroup}
 					style={slideWrapperStyle(index)}
 					accessibilityLabel={
 						clone ? undefined : slideLabel(source, slideCount)
@@ -503,6 +556,7 @@ function CarouselImpl<TItem>(
 					const clone = isCloneAt(index, geometry, slideCount);
 					return (
 						<View
+							{...webGroup}
 							// Position is stable across renders, so an index key is the right
 							// one here — the clones make child keys ambiguous anyway.
 							// biome-ignore lint/suspicious/noArrayIndexKey: rendered order is fixed
@@ -586,6 +640,7 @@ function CarouselImpl<TItem>(
 	} else if (Dot) {
 		paginationNode = (
 			<View
+				{...webGroup}
 				accessibilityLabel={paginationLabel}
 				style={[
 					paginationPosition === "overlay" ? styles.overlay : null,
@@ -636,6 +691,7 @@ function CarouselImpl<TItem>(
 	return (
 		<CarouselProvider value={contextValue}>
 			<View
+				{...webGroup}
 				style={[styles.root, style]}
 				onLayout={onLayout}
 				accessibilityLabel={accessibilityLabel}
