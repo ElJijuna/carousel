@@ -24,6 +24,7 @@
 	"files": [
 		"lib",
 		"src",
+		"CHANGELOG.md",
 		"!**/__tests__",
 		"!**/*.test.ts",
 		"!**/*.test.tsx",
@@ -37,7 +38,7 @@
 		"typecheck": "tsc --noEmit && tsc --noEmit -p e2e/tsconfig.json",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
-		"lint:md": "markdownlint-cli2 \"**/*.md\" \"!node_modules\" \"!docs\" \"!lib\"",
+		"lint:md": "markdownlint-cli2 \"**/*.md\" \"!node_modules\" \"!docs\" \"!lib\" \"!CHANGELOG.md\"",
 		"format": "biome check --write .",
 		"format:check": "biome check .",
 		"test": "jest",

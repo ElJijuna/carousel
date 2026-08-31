@@ -27,11 +27,15 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # Deliberately no `registry-url`: it makes setup-node write an .npmrc
+      # wired to NODE_AUTH_TOKEN, which nothing here sets. @semantic-release/npm
+      # writes its own .npmrc from NPM_TOKEN, and the half-configured one left
+      # behind makes its auth check fail — taking the GitHub release down with
+      # it, since the npm plugin runs first.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          registry-url: https://registry.npmjs.org
 
       - run: npm ci
 
