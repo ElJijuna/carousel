@@ -1,6 +1,6 @@
 {
 	"name": "@real-native/carousel",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Headless, dependency-free horizontal carousel for React Native, Expo and react-native-web",
 	"main": "./lib/commonjs/index.js",
 	"module": "./lib/module/index.js",
