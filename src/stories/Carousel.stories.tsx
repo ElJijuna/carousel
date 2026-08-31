@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { fn } from "storybook/test";
 
 import { Carousel } from "../Carousel";
 import { useCarousel } from "../CarouselContext";
@@ -48,6 +49,34 @@ const styles = StyleSheet.create({
 	dimmed: { opacity: 0.4 },
 });
 
+/**
+ * Props that carry React elements, render functions or styles.
+ *
+ * They stay in the docs table but get no editor: the Controls panel serialises
+ * whatever you type back into the story, and a slide or a slot component does
+ * not survive the round trip — editing `children` would replace real elements
+ * with plain objects, and editing `components` would wipe the chrome. Choosing
+ * those belongs to the story, not to a text field.
+ */
+const noControl = { control: false } as const;
+const structuralArgTypes = Object.fromEntries(
+	[
+		"children",
+		"data",
+		"renderItem",
+		"keyExtractor",
+		"components",
+		"style",
+		"trackStyle",
+		"slideStyle",
+		"paginationStyle",
+		"arrowsStyle",
+		"pageLabel",
+		"slideLabel",
+		"statusLabel",
+	].map((name) => [name, noControl]),
+);
+
 const meta = {
 	title: "Carousel",
 	component: Carousel,
@@ -60,6 +89,35 @@ const meta = {
 					"mocked in `src/stories/mocks.tsx`.",
 			},
 		},
+	},
+	argTypes: {
+		...structuralArgTypes,
+		// `visibleSlides` and `peek` are `number | ResponsiveMap<number>`, which
+		// Storybook can only offer as a JSON editor. Every story but `Responsive`
+		// passes the plain number, so the number control is the useful one; the
+		// responsive stories put the object editor back themselves.
+		visibleSlides: { control: { type: "number", min: 1, max: 6, step: 1 } },
+		peek: { control: { type: "range", min: 0, max: 96, step: 4 } },
+		spacing: { control: { type: "range", min: 0, max: 48, step: 2 } },
+		interval: { control: { type: "range", min: 500, max: 8000, step: 500 } },
+		page: { control: { type: "number", min: 0, step: 1 } },
+		defaultPage: { control: { type: "number", min: 0, step: 1 } },
+	},
+	// Defaults for every story, so the controls open populated rather than as a
+	// row of empty "Set number" buttons. The callbacks are spies, which is what
+	// puts every page change and drag in the Actions panel.
+	args: {
+		onPageChanged: fn(),
+		onDragStart: fn(),
+		onDragEnd: fn(),
+		visibleSlides: 1,
+		spacing: 0,
+		peek: 0,
+		loop: false,
+		infinite: false,
+		autoPlay: false,
+		interval: 3000,
+		trackActiveSlides: false,
 	},
 } satisfies Meta<typeof Carousel>;
 
@@ -117,6 +175,12 @@ export const PeekAndSpacing: Story = {
 
 /** A breakpoint map resolved against the carousel's own width — resize me. */
 export const Responsive: Story = {
+	// This story is the one that passes maps rather than numbers, so it swaps the
+	// meta's number controls back for the JSON editor that can express one.
+	argTypes: {
+		visibleSlides: { control: "object" },
+		peek: { control: "object" },
+	},
 	args: {
 		testID: "carousel",
 		visibleSlides: { base: 3, 700: 2, 460: 1 },
@@ -180,34 +244,46 @@ export const FractionPagination: Story = {
 const virtualizedData = mockData(500);
 
 export const Virtualized: Story = {
-	args: { testID: "carousel" },
-	render: () => (
+	args: {
+		testID: "carousel",
+		visibleSlides: 2,
+		spacing: 12,
+		components: { Arrow: MockArrow, Pagination: MockFraction },
+	},
+	render: (args) => (
 		<Carousel
-			testID="carousel"
-			visibleSlides={2}
-			spacing={12}
+			{...args}
 			data={virtualizedData}
 			keyExtractor={(item) => item.id}
 			renderItem={({ item }) => (
 				<MockSlide index={item.index} caption="virtualized" />
 			)}
-			components={{ Arrow: MockArrow, Pagination: MockFraction }}
 		/>
 	),
 };
 
 /** The parent owns the page and feeds `onPageChanged` straight back. */
 export const Controlled: Story = {
-	args: { testID: "carousel" },
-	render: () => {
+	args: {
+		testID: "carousel",
+		components: { Arrow: MockArrow, Dot: MockDot },
+	},
+	// `page` and `onPageChanged` are the point of the story, so they stay out of
+	// the controls; everything else comes from `args`.
+	argTypes: { page: { control: false } },
+	render: ({ onPageChanged, ...args }) => {
 		const [page, setPage] = useState(0);
 		return (
 			<View>
 				<Carousel
-					testID="carousel"
+					{...args}
 					page={page}
-					onPageChanged={setPage}
-					components={{ Arrow: MockArrow, Dot: MockDot }}
+					// Overriding the arg would silence the Actions panel for the one
+					// story whose whole subject is the page changing, so call both.
+					onPageChanged={(next) => {
+						setPage(next);
+						onPageChanged?.(next);
+					}}
 				>
 					{mockSlides(5)}
 				</Carousel>
@@ -238,19 +314,18 @@ export const Controlled: Story = {
 
 /** Driving the carousel through its `ref`, from a toolbar outside it. */
 export const ImperativeHandle: Story = {
-	args: { testID: "carousel" },
-	render: () => {
+	args: {
+		testID: "carousel",
+		loop: true,
+		components: { Dot: MockDot },
+	},
+	render: (args) => {
 		const carousel = useRef<CarouselHandle>(null);
 		const [readout, setReadout] = useState("page 0");
 		const sync = () => setReadout(`page ${carousel.current?.page ?? 0}`);
 		return (
 			<View>
-				<Carousel
-					testID="carousel"
-					ref={carousel}
-					loop
-					components={{ Dot: MockDot }}
-				>
+				<Carousel {...args} ref={carousel}>
 					{mockSlides(6)}
 				</Carousel>
 				<View style={styles.row}>
@@ -345,21 +420,25 @@ export const CustomChromeViaHook: Story = {
  * and cloning one would show the same card twice.
  *
  * Rendered through `render` rather than `args` so `Carousel`'s item generic is
- * inferred from `mockCards` instead of being pinned to `unknown` by `Meta`.
+ * inferred from `mockCards` instead of being pinned to `unknown` by `Meta`. The
+ * cards themselves are fixed; every layout prop still comes from the controls.
  */
 export const CreditCards: Story = {
-	args: { testID: "carousel" },
-	render: () => (
+	argTypes: { peek: { control: "object" } },
+	args: {
+		testID: "carousel",
+		loop: true,
+		spacing: 16,
+		peek: { base: 36, 460: 20 },
+		components: { Arrow: MockArrow, Dot: MockDot },
+	},
+	render: (args) => (
 		<Carousel
-			testID="carousel"
-			loop
-			spacing={16}
-			peek={{ base: 36, 460: 20 }}
+			{...args}
 			data={mockCards}
 			keyExtractor={(card) => card.id}
 			renderItem={({ item }) => <MockCreditCard card={item} />}
 			slideLabel={(index, total) => `Card ${index + 1} of ${total}`}
-			components={{ Arrow: MockArrow, Dot: MockDot }}
 		/>
 	),
 };

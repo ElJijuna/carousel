@@ -116,12 +116,10 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 	},
 	cardIssuer: { fontSize: 13, fontWeight: "600", color: palette.cardInk },
-	cardTier: {
-		fontSize: 11,
-		letterSpacing: 2,
-		color: palette.cardInk,
-		opacity: 0.8,
-	},
+	// No `opacity` on any card text: the hierarchy comes from size, weight and
+	// letter-spacing instead, because a translucent label blends into the card
+	// colour and drops below the 4.5:1 the a11y addon checks for.
+	cardTier: { fontSize: 11, letterSpacing: 2, color: palette.cardInk },
 	cardChip: {
 		width: 40,
 		height: 30,
@@ -135,10 +133,9 @@ const styles = StyleSheet.create({
 		fontVariant: ["tabular-nums"],
 	},
 	cardLabel: {
-		fontSize: 9,
+		fontSize: 10,
 		letterSpacing: 1,
 		color: palette.cardInk,
-		opacity: 0.7,
 		marginBottom: 2,
 	},
 	cardValue: {
@@ -335,7 +332,7 @@ export const mockCards: readonly MockCard[] = [
 		last4: "8210",
 		holder: "A. MARTINEZ",
 		expires: "11/27",
-		background: "#b45309",
+		background: "#92400e",
 	},
 	{
 		id: "classic",
