@@ -107,21 +107,21 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: palette.calendarBg,
   },
-  weekHeader: {
+  stripHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  weekTitle: { fontSize: 16, fontWeight: '600', color: palette.calendarInk },
-  weekControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  weekReadout: {
+  stripTitle: { fontSize: 16, fontWeight: '600', color: palette.calendarInk },
+  stripControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stripReadout: {
     fontSize: 12,
     color: palette.calendarMuted,
     fontVariant: ['tabular-nums'],
     marginRight: 4,
   },
-  weekButton: {
+  stripButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     borderColor: palette.calendarBorder,
     backgroundColor: palette.calendarCell,
   },
-  weekButtonGlyph: { fontSize: 16, lineHeight: 18, color: palette.calendarInk },
+  stripButtonGlyph: { fontSize: 16, lineHeight: 18, color: palette.calendarInk },
 });
 
 /**
@@ -645,48 +645,50 @@ export const PageLayout: Story = {
 };
 
 /**
- * The day strip's header: the month on the left, the week stepper on the right.
+ * The day strip's header: the month on the left, the stepper on the right.
  *
- * It goes in the `Pagination` slot placed `above`, because a week strip's
- * indicator is not a row of dots — it is "which week is this", spelled out next
- * to the controls that change it.
+ * It goes in the `Pagination` slot placed `above`, because a day strip's
+ * indicator is not a row of dots — it is "which days are these", spelled out
+ * next to the controls that change them.
+ *
+ * The readout is the range actually on screen rather than a week number: a
+ * page is `visibleSlides` days, which is a week on a tablet and four days on a
+ * phone, and a header that says "Week 2" at four days a page is simply wrong.
  */
-const WeekHeader = ({
-  page,
-  pageCount,
-  pageLabel,
-  accessibilityLabel,
-}: CarouselPaginationSlotProps) => {
-  // The slot props carry the page; the hook is here for the stepper, which
-  // already knows where the ends are — that is what greys it out at them
-  // instead of leaving a control that looks pressable and does nothing.
-  const { next, previous, canGoPrevious, canGoNext } = useCarousel();
+const StripHeader = ({ page, accessibilityLabel }: CarouselPaginationSlotProps) => {
+  // `visibleSlides` comes from the hook because it is resolved state, not a
+  // prop: the story passes a responsive map, and only the carousel knows which
+  // entry of it the container's width just selected.
+  const { visibleSlides, next, previous, canGoPrevious, canGoNext } = useCarousel();
+  const shown = mockDays.slice(page * visibleSlides, page * visibleSlides + visibleSlides);
+  const numbers = shown.map((day) => day.dayOfMonth);
+  const readout = numbers.length === 0 ? '' : `${Math.min(...numbers)} – ${Math.max(...numbers)}`;
   return (
-    <View style={styles.weekHeader} accessibilityLabel={accessibilityLabel}>
-      <Text style={styles.weekTitle}>{mockCalendarMonth}</Text>
-      <View style={styles.weekControls}>
-        <Text testID="week-readout" style={styles.weekReadout}>
-          {pageLabel(page, pageCount)}
+    <View style={styles.stripHeader} accessibilityLabel={accessibilityLabel}>
+      <Text style={styles.stripTitle}>{mockCalendarMonth}</Text>
+      <View style={styles.stripControls}>
+        <Text testID="strip-readout" style={styles.stripReadout}>
+          {readout}
         </Text>
         <Pressable
-          testID="week-previous"
+          testID="strip-previous"
           accessibilityRole="button"
-          accessibilityLabel="Previous week"
+          accessibilityLabel="Earlier days"
           accessibilityState={{ disabled: !canGoPrevious }}
           onPress={canGoPrevious ? () => previous() : undefined}
-          style={[styles.weekButton, !canGoPrevious && styles.dimmed]}
+          style={[styles.stripButton, !canGoPrevious && styles.dimmed]}
         >
-          <Text style={styles.weekButtonGlyph}>‹</Text>
+          <Text style={styles.stripButtonGlyph}>‹</Text>
         </Pressable>
         <Pressable
-          testID="week-next"
+          testID="strip-next"
           accessibilityRole="button"
-          accessibilityLabel="Next week"
+          accessibilityLabel="Later days"
           accessibilityState={{ disabled: !canGoNext }}
           onPress={canGoNext ? () => next() : undefined}
-          style={[styles.weekButton, !canGoNext && styles.dimmed]}
+          style={[styles.stripButton, !canGoNext && styles.dimmed]}
         >
-          <Text style={styles.weekButtonGlyph}>›</Text>
+          <Text style={styles.stripButtonGlyph}>›</Text>
         </Pressable>
       </View>
     </View>
@@ -694,14 +696,17 @@ const WeekHeader = ({
 };
 
 /**
- * A day picker: one week of days per page, and the selected day's agenda below.
+ * A day picker: a page of days, and the selected day's agenda below.
  *
  * The two pieces of state are deliberately separate. The **page** is the
  * carousel's — which week is on screen — and the **selection** is the story's,
  * so paging ahead to look at next week does not change the day you were
  * reading, and picking a day does not scroll the strip out from under your
- * finger. `visibleSlides: 7` is what makes a page a week; drop it to 5 in the
- * controls and a page becomes five days, with the selected day untouched.
+ * finger. `visibleSlides` is what makes a page a week — seven days where there
+ * is room for them, four on a phone, and the header names the range on screen
+ * rather than a week number, because at four days a page there is no week to
+ * name. Switch the toolbar's viewport between Phone and Tablet to watch a page
+ * change size without the selection moving.
  *
  * The chips are slides that are also controls, which is the shape of any row
  * that drives the content under it — a category filter, a date range, tabs.
@@ -714,11 +719,10 @@ export const DayCalendar: Story = {
     testID: 'carousel',
     visibleSlides: { base: 7, 620: 5, 460: 4 },
     spacing: 8,
-    components: { Pagination: WeekHeader },
+    components: { Pagination: StripHeader },
     slots: { pagination: 'above' },
     accessibilityLabel: 'Day picker',
-    paginationLabel: 'Weeks',
-    pageLabel: (index: number, total: number) => `Week ${index + 1} of ${total}`,
+    paginationLabel: 'Days shown',
     // Each chip already says which day it is, so the slide wrapper only has to
     // say where in the strip it sits.
     slideLabel: (index: number, total: number) => `Day ${index + 1} of ${total}`,

@@ -868,6 +868,14 @@ on merge to `main`.
 The Storybook doubles as the e2e fixture: the mocked chrome lives in `src/stories/mocks.tsx` and is
 a reasonable starting point for your own.
 
+### Checking a story at a device width
+
+The toolbar's viewport picker offers Phone, Large phone, Tablet, Laptop and Desktop (rotate for
+landscape), which is how you watch a responsive map hand over without dragging a window. The
+preview frame caps itself at 720dp while the viewport is left responsive, and gives that width away
+as soon as a device is picked — otherwise Tablet and Desktop would both render a 720dp carousel.
+Add or change devices in `.storybook/preview.tsx`.
+
 ## License
 
 MIT © [pilmee](https://github.com/ElJijuna)

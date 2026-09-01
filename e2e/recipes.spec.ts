@@ -133,11 +133,12 @@ test.describe('page layout', () => {
 });
 
 test.describe('day calendar', () => {
-  test('the selected day survives paging to another week', async ({ page }) => {
+  test('the selected day survives paging to the next days', async ({ page }) => {
     await openStory(page, 'day-calendar');
 
-    // Seven chips a page, three weeks of them, and the story opens on the 13th.
-    await expect(page.getByTestId('week-readout')).toHaveText('Week 1 of 3');
+    // Seven chips a page at this width, three pages of them, and the story
+    // opens on the 13th.
+    await expect(page.getByTestId('strip-readout')).toHaveText('9 – 15');
     await expect(page.getByTestId('day-13-selected')).toBeVisible();
     await expect(page.getByTestId('day-agenda-heading')).toContainText('Friday 13 August');
 
@@ -148,13 +149,13 @@ test.describe('day calendar', () => {
     // Picking a day is not paging: the strip stays where it was.
     expect(await scrollLeft(page)).toBe(0);
 
-    await page.getByTestId('week-next').click();
+    await page.getByTestId('strip-next').click();
     const width = await pageWidth(page);
 
     // A page plus the `spacing` between the last chip of one week and the
     // first of the next — the stride the strip actually advances by.
     expect(await restingOffset(page)).toBe(width + 8);
-    await expect(page.getByTestId('week-readout')).toHaveText('Week 2 of 3');
+    await expect(page.getByTestId('strip-readout')).toHaveText('16 – 22');
     // …and paging is not picking: the panel still shows the day that was chosen.
     await expect(page.getByTestId('day-agenda-heading')).toContainText('Wednesday 11 August');
   });
