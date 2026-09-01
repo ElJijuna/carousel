@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { fn } from 'storybook/test';
 
@@ -14,9 +14,11 @@ import {
   MockDot,
   MockFraction,
   MockPageSlide,
+  MockPhotoSlide,
   MockPlayPause,
   MockSlide,
   MockSplitCard,
+  MockThumb,
   mockCalendarMonth,
   mockCards,
   mockCoverSlides,
@@ -25,6 +27,7 @@ import {
   mockDefaultDayId,
   mockFeatures,
   mockPages,
+  mockPhotos,
   mockSlides,
   palette,
 } from './mocks';
@@ -133,6 +136,8 @@ const styles = StyleSheet.create({
     backgroundColor: palette.calendarCell,
   },
   stripButtonGlyph: { fontSize: 16, lineHeight: 18, color: palette.calendarInk },
+
+  strip: { marginTop: 12 },
 });
 
 /**
@@ -803,5 +808,85 @@ export const Coverflow: Story = {
     accessibilityLabel: 'Albums',
     slideLabel: (index: number, total: number) => `Album ${index + 1} of ${total}`,
     children: mockCoverSlides(),
+  },
+};
+
+/**
+ * A gallery: the picture on top, a strip of thumbnails under it.
+ *
+ * One piece of state — the selected photo — and both carousels answer to it.
+ * The picture is *controlled*, so it only ever renders the index the story
+ * holds; the strip is left uncontrolled and is nudged through its `ref`, since
+ * what it needs is not to be on a particular page but to have the selected
+ * thumbnail in view.
+ *
+ * This is the `DayCalendar` story's lesson turned around. There, paging the
+ * strip deliberately left the selection alone: which week you are looking at
+ * is not which day you picked. Here the two must not drift — a thumbnail strip
+ * whose highlight has scrolled out of sight is telling the user nothing — so
+ * the effect below follows every change, whoever made it: a swipe on the
+ * picture, an arrow, or a press on a thumbnail.
+ *
+ * `goToSlide` rather than `goTo`: the strip's pages hold several thumbnails
+ * each, so the index of a photo is not the index of a page, and asking for the
+ * page holding a slide is exactly the question this API answers.
+ */
+export const Gallery: Story = {
+  args: {
+    testID: 'carousel',
+    components: { Arrow: MockArrow, Pagination: MockFraction },
+    accessibilityLabel: 'Photos',
+    slideLabel: (index: number, total: number) => `Photo ${index + 1} of ${total}`,
+  },
+  argTypes: { page: { control: false } },
+  render: ({ onPageChanged, ...args }) => {
+    const [selected, setSelected] = useState(0);
+    const strip = useRef<CarouselHandle>(null);
+
+    // Keep the highlighted thumbnail on screen. `goToSlide` is a no-op when it
+    // is already on the current page, so this costs nothing on the changes
+    // that do not need it.
+    useEffect(() => {
+      strip.current?.goToSlide(selected);
+    }, [selected]);
+
+    return (
+      <View>
+        <Carousel
+          {...args}
+          page={selected}
+          onPageChanged={(page, event) => {
+            setSelected(page);
+            // The story owns the page, but the Actions panel should still see
+            // every change — this story's whole subject is that they agree.
+            onPageChanged?.(page, event);
+          }}
+        >
+          {mockPhotos.map((photo) => (
+            <MockPhotoSlide key={photo.id} photo={photo} />
+          ))}
+        </Carousel>
+        <Carousel
+          ref={strip}
+          testID="thumbs"
+          style={styles.strip}
+          visibleSlides={{ base: 5, 560: 4, 420: 3 }}
+          spacing={8}
+          accessibilityLabel="Thumbnails"
+          slideLabel={(index: number, total: number) => `Thumbnail ${index + 1} of ${total}`}
+        >
+          {mockPhotos.map((photo, index) => (
+            <MockThumb
+              key={photo.id}
+              photo={photo}
+              index={index}
+              total={mockPhotos.length}
+              selected={index === selected}
+              onPress={() => setSelected(index)}
+            />
+          ))}
+        </Carousel>
+      </View>
+    );
   },
 };

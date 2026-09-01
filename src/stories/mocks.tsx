@@ -309,6 +309,39 @@ const styles = StyleSheet.create({
     backgroundColor: palette.accent,
   },
   coverBadgeText: { fontSize: 11, fontWeight: '600', color: palette.surface },
+
+  photo: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: palette.splitBorder,
+    backgroundColor: palette.surface,
+    // The picture runs to the card's edge, so the corners have to clip it.
+    overflow: 'hidden',
+  },
+  photoArt: { width: '100%', height: 300 },
+  photoCaption: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    padding: 12,
+    gap: 12,
+  },
+  photoTitle: { fontSize: 15, fontWeight: '600', color: palette.ink, flexShrink: 1 },
+  photoPlace: { fontSize: 12, color: palette.caption },
+
+  thumb: {
+    height: 56,
+    borderRadius: 8,
+    // The unselected border is the same width as the selected one, in the page
+    // colour: a border that only appears when selected shifts every other
+    // thumbnail by two pixels as the selection moves.
+    borderWidth: 2,
+    borderColor: palette.surface,
+    overflow: 'hidden',
+  },
+  thumbSelected: { borderColor: palette.accent },
+  thumbArt: { width: '100%', height: '100%' },
+  thumbArtIdle: { opacity: 0.55 },
 });
 
 /** Round arrow button. Goes translucent rather than unmounting at the ends. */
@@ -901,3 +934,89 @@ export const MockCoverSlide = ({ cover, index }: { cover: MockCover; index: numb
 /** The covers as slides, each told which index it is. */
 export const mockCoverSlides = () =>
   mockCovers.map((cover, index) => <MockCoverSlide key={cover.id} cover={cover} index={index} />);
+
+/** One picture in the gallery story. */
+export interface MockPhoto {
+  id: string;
+  title: string;
+  /** Where it was taken — the right-hand half of the caption. */
+  place: string;
+  /** Which entry of {@link mockImages} stands in for the photograph. */
+  image: keyof typeof mockImages;
+}
+
+/**
+ * Ten pictures, for the gallery story.
+ *
+ * More than fit in one page of thumbnails on purpose: a strip that never has
+ * to scroll would not show the thing the story is about.
+ */
+export const mockPhotos: readonly MockPhoto[] = [
+  { id: 'pier', title: 'The long pier', place: 'Harbour', image: 'harbour' },
+  { id: 'grass', title: 'Grass after rain', place: 'Meadow', image: 'meadow' },
+  { id: 'sunrise', title: 'Sunrise, 05:40', place: 'East ridge', image: 'dawn' },
+  { id: 'streetlight', title: 'Last streetlight', place: 'Old town', image: 'dusk' },
+  { id: 'breakwater', title: 'Breakwater', place: 'Harbour', image: 'harbour' },
+  { id: 'hedgerow', title: 'Hedgerow', place: 'Meadow', image: 'meadow' },
+  { id: 'frost', title: 'Frost, first light', place: 'East ridge', image: 'dawn' },
+  { id: 'lamplight', title: 'Lamplight', place: 'Old town', image: 'dusk' },
+  { id: 'lowtide', title: 'Low tide', place: 'Harbour', image: 'harbour' },
+  { id: 'orchard', title: 'The old orchard', place: 'Meadow', image: 'meadow' },
+];
+
+/** The full-size half of the gallery: one picture and its caption. */
+export const MockPhotoSlide = ({ photo }: { photo: MockPhoto }) => (
+  <View style={styles.photo} testID={`photo-${photo.id}`}>
+    <Image
+      style={styles.photoArt}
+      resizeMode="cover"
+      source={{ uri: mockImages[photo.image] }}
+      accessibilityLabel={mockImageLabels[photo.image]}
+    />
+    <View style={styles.photoCaption}>
+      <Text style={styles.photoTitle} numberOfLines={1}>
+        {photo.title}
+      </Text>
+      <Text style={styles.photoPlace}>{photo.place}</Text>
+    </View>
+  </View>
+);
+
+/**
+ * One thumbnail: a slide of the strip that is also the control selecting it.
+ *
+ * The picture is what identifies it, so the accessible name has to carry the
+ * caption — a screen reader gets nothing from the image itself.
+ */
+export const MockThumb = ({
+  photo,
+  index,
+  total,
+  selected,
+  onPress,
+}: {
+  photo: MockPhoto;
+  index: number;
+  total: number;
+  selected: boolean;
+  onPress: () => void;
+}) => (
+  <Pressable
+    testID={`thumb-${photo.id}`}
+    accessibilityRole="button"
+    accessibilityState={{ selected }}
+    accessibilityLabel={`${photo.title}, ${index + 1} of ${total}`}
+    onPress={onPress}
+    style={[styles.thumb, selected && styles.thumbSelected]}
+  >
+    {/* Dimming a picture costs nothing in contrast terms — there is no text on
+        it — and the selected border carries the state on its own regardless. */}
+    <Image
+      testID={`thumb-${photo.id}-${selected ? 'selected' : 'idle'}`}
+      style={[styles.thumbArt, !selected && styles.thumbArtIdle]}
+      resizeMode="cover"
+      source={{ uri: mockImages[photo.image] }}
+      accessibilityLabel={mockImageLabels[photo.image]}
+    />
+  </Pressable>
+);

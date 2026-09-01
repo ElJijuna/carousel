@@ -305,8 +305,23 @@ export function useCarouselScroll({
       return;
     }
     lastAppliedPageRef.current = page;
-    scrollToLogical(offsetForPage(page, geometry), !reducedMotion);
-  }, [page, geometry, reducedMotion, scrollToLogical]);
+    const offset = offsetForPage(page, geometry);
+    const animated = !reducedMotion;
+    // Marked programmatic for the same reasons `applyTarget` marks its own
+    // moves. Without it `onScroll` reads this animation's frames as a drag and
+    // commits every page it travels over — and a parent feeding
+    // `onPageChanged` back into `page`, which is the documented contract,
+    // applies those and lands on whichever page the scroll had reached rather
+    // than the one it asked for. It also lets `onContentSizeChange` see the
+    // move as in flight, so a virtualized list mounting slides underneath it
+    // re-issues the scroll instead of cutting it short.
+    activeSourceRef.current = 'imperative';
+    programmaticRef.current = true;
+    programmaticTargetRef.current = { offset, animated };
+    clearTimeout(programmaticTimerRef.current);
+    programmaticTimerRef.current = setTimeout(settle, PROGRAMMATIC_SETTLE_MS);
+    scrollToLogical(offset, animated);
+  }, [page, geometry, reducedMotion, scrollToLogical, settle]);
 
   const onContentSizeChange = useCallback(() => {
     // `FlatList` ignores `scrollToOffset` until it has laid out content, so the

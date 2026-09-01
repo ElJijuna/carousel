@@ -71,6 +71,13 @@ const layout = async (testID = 'c', width = WIDTH) => {
   });
 };
 
+/** Simulate a single scroll frame, mid-flight. */
+const scrollTo = async (x: number, testID = 'c-track') => {
+  await fireEvent(screen.getByTestId(testID), 'scroll', {
+    nativeEvent: { contentOffset: { x, y: 0 } },
+  });
+};
+
 /** Simulate the track coming to rest at a scroll offset. */
 const settleAt = async (x: number, testID = 'c-track') => {
   await fireEvent(screen.getByTestId(testID), 'momentumScrollEnd', {
@@ -459,6 +466,35 @@ describe('controlled mode', () => {
     });
 
     expect(screen.getByText('[3]')).toBeTruthy();
+  });
+
+  it('does not report the pages a controlled jump scrolls past', async () => {
+    const onPageChanged = jest.fn();
+    const view = await render(
+      <Carousel testID="c" page={0} onPageChanged={onPageChanged} components={{ Dot: MockDot }}>
+        {slides(4)}
+      </Carousel>,
+    );
+    await layout();
+
+    await act(async () => {
+      await view.rerender(
+        <Carousel testID="c" page={2} onPageChanged={onPageChanged} components={{ Dot: MockDot }}>
+          {slides(4)}
+        </Carousel>,
+      );
+    });
+    onPageChanged.mockClear();
+
+    // Frames from the animated scroll the prop change started: still at the
+    // old page, then passing over the one in between.
+    await scrollTo(0);
+    await scrollTo(WIDTH);
+
+    // A parent that feeds `onPageChanged` back into `page` — the documented
+    // contract — would be dragged to whichever page the animation had reached
+    // and never arrive at the one it asked for.
+    expect(onPageChanged).not.toHaveBeenCalled();
   });
 });
 

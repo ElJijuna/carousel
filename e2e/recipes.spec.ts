@@ -240,3 +240,57 @@ test.describe('coverflow', () => {
     expect(samples.some((scale) => scale > resting && scale < 1)).toBe(true);
   });
 });
+
+test.describe('gallery', () => {
+  /** Where the thumbnail strip — the second carousel — is scrolled to. */
+  const stripOffset = (page: Parameters<typeof pageWidth>[0]): Promise<number> =>
+    page.evaluate(() =>
+      Math.round(
+        (document.querySelector('[data-testid="thumbs-track"]') as HTMLElement).scrollLeft,
+      ),
+    );
+
+  test('a thumbnail moves the picture, and the picture moves the highlight', async ({ page }) => {
+    await openStory(page, 'gallery');
+
+    await expect(page.getByTestId('fraction')).toHaveText('1 / 10');
+    await expect(page.getByTestId('thumb-pier-selected')).toBeVisible();
+
+    await page.getByTestId('thumb-sunrise').click();
+    await restingOffset(page);
+
+    await expect(page.getByTestId('fraction')).toHaveText('3 / 10');
+    await expect(page.getByTestId('thumb-sunrise-selected')).toBeVisible();
+
+    // The other direction: the picture's own arrow moves the highlight, which
+    // is the half a two-carousel gallery usually gets wrong.
+    await page.getByTestId('arrow-next').click();
+    await restingOffset(page);
+
+    await expect(page.getByTestId('fraction')).toHaveText('4 / 10');
+    await expect(page.getByTestId('thumb-streetlight-selected')).toBeVisible();
+  });
+
+  test('the strip scrolls only once the selection leaves it', async ({ page }) => {
+    await openStory(page, 'gallery');
+    expect(await stripOffset(page)).toBe(0);
+
+    // Photo 3 is on the strip's first page, so nothing needs to move: the
+    // effect calls `goToSlide`, and `goToSlide` is a no-op for a slide that is
+    // already on the current page.
+    await page.getByTestId('thumb-sunrise').click();
+    await restingOffset(page);
+    expect(await stripOffset(page)).toBe(0);
+
+    // Past the fifth photo the strip has to follow, or the highlight would be
+    // marking a thumbnail nobody can see.
+    for (let press = 0; press < 4; press++) {
+      await page.getByTestId('arrow-next').click();
+      await restingOffset(page);
+    }
+
+    await expect(page.getByTestId('fraction')).toHaveText('7 / 10');
+    await expect(page.getByTestId('thumb-frost-selected')).toBeVisible();
+    await expect.poll(() => stripOffset(page)).toBeGreaterThan(0);
+  });
+});
