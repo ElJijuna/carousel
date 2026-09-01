@@ -1,3 +1,15 @@
+## [0.4.1](https://github.com/ElJijuna/carousel/compare/v0.4.0...v0.4.1) (2026-09-01)
+
+### Bug Fixes
+
+* add gallery component with synchronized thumbnail strip and photo display ([e11f5e7](https://github.com/ElJijuna/carousel/commit/e11f5e7cc3dd915afb486fb760e1ea24ddd6b365))
+
+### Documentation
+
+* add coverflow component with scaling and fading effects for album covers ([0ecca24](https://github.com/ElJijuna/carousel/commit/0ecca24e8e75ce85f5903addfe9a7029efcc85cb))
+* add day calendar component with agenda display and navigation controls ([d636e88](https://github.com/ElJijuna/carousel/commit/d636e88b6f12bd04c706255a41b1aa2ddb8e12a0))
+* enhance viewport options and update day calendar tests for improved responsiveness ([a728624](https://github.com/ElJijuna/carousel/commit/a72862468904ced2d615ef0a80fd4e64f9a2fa03))
+
 ## [0.4.0](https://github.com/ElJijuna/carousel/compare/v0.3.0...v0.4.0) (2026-08-31)
 
 ### Features
