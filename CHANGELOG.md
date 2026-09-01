@@ -1,3 +1,13 @@
+## [0.5.0](https://github.com/ElJijuna/carousel/compare/v0.4.1...v0.5.0) (2026-09-01)
+
+### Features
+
+* add carousel example recipes and TypeScript configuration ([5a582ba](https://github.com/ElJijuna/carousel/commit/5a582ba3d557da55fbfda986336b8f123d374004))
+
+### Documentation
+
+* update package.json dependencies and add theme file ([221afd7](https://github.com/ElJijuna/carousel/commit/221afd721a5042c73f082b0f8498936a2c2139d3))
+
 ## [0.4.1](https://github.com/ElJijuna/carousel/compare/v0.4.0...v0.4.1) (2026-09-01)
 
 ### Bug Fixes
