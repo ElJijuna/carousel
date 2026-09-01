@@ -1,0 +1,17 @@
+{
+    "extends": "expo/tsconfig.base",
+    "compilerOptions": {
+        "strict": true,
+        // Metro reaches the source through the package's `"react-native"`
+        // export condition, which TypeScript does not apply by default — it
+        // would resolve the `import` condition instead and look for
+        // `lib/typescript/`, which only exists after a build. Pointing the
+        // package name straight at the source keeps the editor honest before
+        // anything has been built.
+        "paths": {
+            "@real-native/carousel": ["../src/index.ts"]
+        }
+    },
+    "include": ["**/*.ts", "**/*.tsx"],
+    "exclude": ["node_modules"]
+}

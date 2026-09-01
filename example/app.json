@@ -1,0 +1,16 @@
+{
+    "expo": {
+        "name": "Carousel recipes",
+        "slug": "real-native-carousel-example",
+        "version": "1.0.0",
+        "userInterfaceStyle": "light",
+        "newArchEnabled": true,
+        "orientation": "default",
+        "ios": {
+            "supportsTablet": true
+        },
+        "android": {
+            "package": "dev.realnative.carousel.example"
+        }
+    }
+}

@@ -837,6 +837,32 @@ npm run build         # react-native-builder-bob
 npm run docs          # TypeDoc
 ```
 
+### Running on a device
+
+The Storybook renders every recipe through react-native-web, which is a browser and not a phone —
+momentum, snapping and the safe area are exactly where the two diverge. `example/` is an Expo app
+that puts the same recipes on real iOS and Android:
+
+```bash
+cd example
+npm install
+npm start        # then press i / a, or scan the QR code with Expo Go
+```
+
+The library has no native modules of its own, so Expo Go runs it as-is — there is no `prebuild`
+step and no Xcode or Android Studio required.
+
+The app imports the library through its package name, which resolves to `src/index.ts` rather than
+to `lib/`: editing a source file reloads the running app with no build in between. The recipes in
+`example/recipes/` are the story bodies from `src/stories/Carousel.stories.tsx`, drawn with the
+same mocked chrome via `example/chrome.ts` — two separate implementations would compare nothing,
+and comparing is the point.
+
+Its dependencies are deliberately its own rather than the repo's: the app tracks whichever React
+Native version the current Expo SDK pins, which is not the one this package develops against.
+`example/metro.config.js` blocks the repo's copies of the peer dependencies so exactly one React
+and one React Native reach the bundle.
+
 ### Visual regression
 
 `npm run test:visual` renders the stories whose subject is a layout — the cards, the page-level
