@@ -33,6 +33,17 @@ export const palette = {
   cardChip: '#e2c275',
   splitBorder: '#e5e7eb',
   splitEyebrow: '#2563eb',
+  // The day strip is the one dark surface in this Storybook, so it carries its
+  // own ramp rather than inverting the light one above.
+  calendarBg: '#0f0f11',
+  calendarPanel: '#151517',
+  calendarCell: '#1c1c1e',
+  calendarCellSelected: '#0b2a5b',
+  calendarBorder: '#2a2a2e',
+  calendarBorderSelected: '#1d4ed8',
+  calendarInk: '#f4f4f5',
+  calendarMuted: '#a1a1aa',
+  calendarAccent: '#60a5fa',
 };
 
 const styles = StyleSheet.create({
@@ -213,6 +224,61 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
+
+  dayCell: {
+    // No width: the carousel divides the strip up by `visibleSlides`, so a
+    // week fits whatever the container is, down to a phone.
+    height: 96,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: palette.calendarBorder,
+    backgroundColor: palette.calendarCell,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  dayCellSelected: {
+    backgroundColor: palette.calendarCellSelected,
+    borderColor: palette.calendarBorderSelected,
+  },
+  // The selected day is marked by a border and a heavier number as well as by
+  // colour, so it still reads as selected without colour perception.
+  dayWeekday: { fontSize: 12, letterSpacing: 1, color: palette.calendarMuted },
+  dayWeekdaySelected: { color: palette.calendarAccent },
+  dayNumber: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: palette.calendarInk,
+    fontVariant: ['tabular-nums'],
+  },
+  dayNumberSelected: { color: palette.calendarAccent, fontWeight: '700' },
+
+  agenda: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: palette.calendarBorder,
+    backgroundColor: palette.calendarPanel,
+  },
+  agendaHeading: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: palette.calendarInk,
+    marginBottom: 12,
+  },
+  agendaRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  agendaRowSpaced: { marginTop: 12 },
+  agendaTime: {
+    width: 52,
+    fontSize: 13,
+    color: palette.calendarAccent,
+    fontVariant: ['tabular-nums'],
+  },
+  agendaText: { flexShrink: 1 },
+  agendaTitle: { fontSize: 14, color: palette.calendarInk },
+  agendaLocation: { fontSize: 12, color: palette.calendarMuted, marginTop: 2 },
+  agendaEmpty: { fontSize: 13, color: palette.calendarMuted },
 });
 
 /** Round arrow button. Goes translucent rather than unmounting at the ends. */
@@ -553,3 +619,166 @@ export const mockPages: readonly MockPage[] = [
     image: 'harbour',
   },
 ];
+
+/** One entry of a day's agenda, in the day-strip story. */
+export interface MockAgendaEntry {
+  id: string;
+  /** 24-hour start time. */
+  time: string;
+  title: string;
+  /** Room or "Remote" — the second line of the entry. */
+  location: string;
+}
+
+/** One day chip in the day-strip story, with the agenda it reveals. */
+export interface MockDay {
+  id: string;
+  /** Three-letter weekday, printed above the number. */
+  weekday: string;
+  /** Day of the month, printed large. */
+  dayOfMonth: number;
+  /** Spoken name of the day — the chip's accessible label. */
+  label: string;
+  /** What the panel below the strip shows while this day is selected. */
+  agenda: readonly MockAgendaEntry[];
+}
+
+/** The month the strip covers. Printed by the story's own header. */
+export const mockCalendarMonth = 'August';
+
+const weekdays = [
+  ['MON', 'Monday'],
+  ['TUE', 'Tuesday'],
+  ['WED', 'Wednesday'],
+  ['THU', 'Thursday'],
+  ['FRI', 'Friday'],
+  ['SAT', 'Saturday'],
+  ['SUN', 'Sunday'],
+] as const;
+
+/** Rotated rather than randomised, so every render — and every screenshot — matches. */
+const agendaPool = [
+  { time: '09:00', title: 'Design review', location: 'Studio A' },
+  { time: '11:30', title: 'Pairing on the scroll bridge', location: 'Remote' },
+  { time: '14:00', title: 'Release planning', location: 'Room 4' },
+  { time: '16:15', title: 'Accessibility audit', location: 'Remote' },
+  { time: '18:00', title: 'Community call', location: 'Remote' },
+] as const;
+
+const agendaFor = (index: number): MockAgendaEntry[] => {
+  // Sundays stay empty on purpose: a day view needs an empty state as much as
+  // it needs a full one.
+  if (index % 7 === 6) {
+    return [];
+  }
+  // Rotated with `slice` rather than read at `[i % length]`, so the pool is
+  // walked without an index the compiler has to be told cannot miss.
+  const offset = index % agendaPool.length;
+  return [...agendaPool.slice(offset), ...agendaPool.slice(0, offset)]
+    .slice(0, (index % 3) + 1)
+    // Rotating the pool picks *which* entries a day gets; a day still reads
+    // top to bottom in time order, the way an agenda has to.
+    .sort((a, b) => a.time.localeCompare(b.time))
+    .map((entry, slot) => ({ id: `day-${index}-entry-${slot}`, ...entry }));
+};
+
+const buildDay = (index: number, weekday: string, spoken: string): MockDay => {
+  const dayOfMonth = 9 + index;
+  const agenda = agendaFor(index);
+  return {
+    id: `day-${dayOfMonth}`,
+    weekday,
+    dayOfMonth,
+    // The count goes in the label because the chip only shows a number: a
+    // reader that cannot see the panel below still learns the day is busy.
+    label: `${spoken} ${dayOfMonth} ${mockCalendarMonth}, ${
+      agenda.length === 0 ? 'nothing scheduled' : `${agenda.length} scheduled`
+    }`,
+    agenda,
+  };
+};
+
+/**
+ * Three weeks of days, starting on Monday the 9th.
+ *
+ * Fixed values rather than `new Date()`: the story, the e2e suite and the
+ * visual baselines all have to render the same strip on any day of the year.
+ */
+export const mockDays: readonly MockDay[] = Array.from({ length: 3 }, (_, week) =>
+  weekdays.map(([weekday, spoken], slot) => buildDay(week * 7 + slot, weekday, spoken)),
+).flat();
+
+/** The day the strip opens on — Friday the 13th, on the first week. */
+export const mockDefaultDayId = 'day-13';
+
+/**
+ * One day of the strip.
+ *
+ * A slide that is also a control: the carousel owns where the chip *is*, and
+ * the chip owns whether it is the selected day. Keeping those apart is what
+ * lets the strip page a whole week without changing the selection.
+ */
+export const MockDayCell = ({
+  day,
+  selected,
+  onPress,
+}: {
+  day: MockDay;
+  selected: boolean;
+  onPress: () => void;
+}) => (
+  <Pressable
+    testID={`day-${day.dayOfMonth}`}
+    accessibilityRole="button"
+    accessibilityState={{ selected }}
+    accessibilityLabel={day.label}
+    onPress={onPress}
+    style={[styles.dayCell, selected && styles.dayCellSelected]}
+  >
+    {/*
+      Same reason as `MockDot`: react-native-web does not map
+      `accessibilityState` onto a plain button, so this inner testID is what
+      the browser-based e2e suite can assert the selected state on.
+    */}
+    <Text
+      testID={`day-${day.dayOfMonth}-${selected ? 'selected' : 'idle'}`}
+      style={[styles.dayWeekday, selected && styles.dayWeekdaySelected]}
+    >
+      {day.weekday}
+    </Text>
+    <Text style={[styles.dayNumber, selected && styles.dayNumberSelected]}>{day.dayOfMonth}</Text>
+  </Pressable>
+);
+
+/**
+ * The panel under the strip: what the selected day holds.
+ *
+ * Announced politely rather than swapped silently — the content changes below
+ * the chip that was pressed, which is not where a screen-reader user is.
+ */
+export const MockDayAgenda = ({ day }: { day: MockDay }) => (
+  <View style={styles.agenda} testID="day-agenda" accessibilityLiveRegion="polite">
+    <Text style={styles.agendaHeading} testID="day-agenda-heading">
+      {day.label}
+    </Text>
+    {day.agenda.length === 0 ? (
+      <Text style={styles.agendaEmpty} testID="day-agenda-empty">
+        Nothing scheduled.
+      </Text>
+    ) : (
+      day.agenda.map((entry, index) => (
+        <View
+          key={entry.id}
+          testID={`entry-${entry.id}`}
+          style={[styles.agendaRow, index > 0 && styles.agendaRowSpaced]}
+        >
+          <Text style={styles.agendaTime}>{entry.time}</Text>
+          <View style={styles.agendaText}>
+            <Text style={styles.agendaTitle}>{entry.title}</Text>
+            <Text style={styles.agendaLocation}>{entry.location}</Text>
+          </View>
+        </View>
+      ))
+    )}
+  </View>
+);

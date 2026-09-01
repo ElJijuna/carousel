@@ -9,14 +9,19 @@ import type { CarouselHandle, CarouselPaginationSlotProps } from '../types';
 import {
   MockArrow,
   MockCreditCard,
+  MockDayAgenda,
+  MockDayCell,
   MockDot,
   MockFraction,
   MockPageSlide,
   MockPlayPause,
   MockSlide,
   MockSplitCard,
+  mockCalendarMonth,
   mockCards,
   mockData,
+  mockDays,
+  mockDefaultDayId,
   mockFeatures,
   mockPages,
   mockSlides,
@@ -96,6 +101,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+
+  calendar: {
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: palette.calendarBg,
+  },
+  weekHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  weekTitle: { fontSize: 16, fontWeight: '600', color: palette.calendarInk },
+  weekControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  weekReadout: {
+    fontSize: 12,
+    color: palette.calendarMuted,
+    fontVariant: ['tabular-nums'],
+    marginRight: 4,
+  },
+  weekButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: palette.calendarBorder,
+    backgroundColor: palette.calendarCell,
+  },
+  weekButtonGlyph: { fontSize: 16, lineHeight: 18, color: palette.calendarInk },
 });
 
 /**
@@ -606,4 +642,106 @@ export const PageLayout: Story = {
       />
     </View>
   ),
+};
+
+/**
+ * The day strip's header: the month on the left, the week stepper on the right.
+ *
+ * It goes in the `Pagination` slot placed `above`, because a week strip's
+ * indicator is not a row of dots — it is "which week is this", spelled out next
+ * to the controls that change it.
+ */
+const WeekHeader = ({
+  page,
+  pageCount,
+  pageLabel,
+  accessibilityLabel,
+}: CarouselPaginationSlotProps) => {
+  // The slot props carry the page; the hook is here for the stepper, which
+  // already knows where the ends are — that is what greys it out at them
+  // instead of leaving a control that looks pressable and does nothing.
+  const { next, previous, canGoPrevious, canGoNext } = useCarousel();
+  return (
+    <View style={styles.weekHeader} accessibilityLabel={accessibilityLabel}>
+      <Text style={styles.weekTitle}>{mockCalendarMonth}</Text>
+      <View style={styles.weekControls}>
+        <Text testID="week-readout" style={styles.weekReadout}>
+          {pageLabel(page, pageCount)}
+        </Text>
+        <Pressable
+          testID="week-previous"
+          accessibilityRole="button"
+          accessibilityLabel="Previous week"
+          accessibilityState={{ disabled: !canGoPrevious }}
+          onPress={canGoPrevious ? () => previous() : undefined}
+          style={[styles.weekButton, !canGoPrevious && styles.dimmed]}
+        >
+          <Text style={styles.weekButtonGlyph}>‹</Text>
+        </Pressable>
+        <Pressable
+          testID="week-next"
+          accessibilityRole="button"
+          accessibilityLabel="Next week"
+          accessibilityState={{ disabled: !canGoNext }}
+          onPress={canGoNext ? () => next() : undefined}
+          style={[styles.weekButton, !canGoNext && styles.dimmed]}
+        >
+          <Text style={styles.weekButtonGlyph}>›</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
+/**
+ * A day picker: one week of days per page, and the selected day's agenda below.
+ *
+ * The two pieces of state are deliberately separate. The **page** is the
+ * carousel's — which week is on screen — and the **selection** is the story's,
+ * so paging ahead to look at next week does not change the day you were
+ * reading, and picking a day does not scroll the strip out from under your
+ * finger. `visibleSlides: 7` is what makes a page a week; drop it to 5 in the
+ * controls and a page becomes five days, with the selected day untouched.
+ *
+ * The chips are slides that are also controls, which is the shape of any row
+ * that drives the content under it — a category filter, a date range, tabs.
+ */
+export const DayCalendar: Story = {
+  // A week is seven chips on a wide container and fewer on a phone, so this
+  // story passes a map and needs the JSON editor back.
+  argTypes: { visibleSlides: { control: 'object' } },
+  args: {
+    testID: 'carousel',
+    visibleSlides: { base: 7, 620: 5, 460: 4 },
+    spacing: 8,
+    components: { Pagination: WeekHeader },
+    slots: { pagination: 'above' },
+    accessibilityLabel: 'Day picker',
+    paginationLabel: 'Weeks',
+    pageLabel: (index: number, total: number) => `Week ${index + 1} of ${total}`,
+    // Each chip already says which day it is, so the slide wrapper only has to
+    // say where in the strip it sits.
+    slideLabel: (index: number, total: number) => `Day ${index + 1} of ${total}`,
+  },
+  render: (args) => {
+    // The day's id, not its position: what is selected is a day, and it stays
+    // that day however the strip is paged, resized or re-grouped.
+    const [selectedId, setSelectedId] = useState(mockDefaultDayId);
+    const selectedDay = mockDays.find((day) => day.id === selectedId);
+    return (
+      <View style={styles.calendar}>
+        <Carousel {...args}>
+          {mockDays.map((day) => (
+            <MockDayCell
+              key={day.id}
+              day={day}
+              selected={day.id === selectedId}
+              onPress={() => setSelectedId(day.id)}
+            />
+          ))}
+        </Carousel>
+        {selectedDay ? <MockDayAgenda day={selectedDay} /> : null}
+      </View>
+    );
+  },
 };
