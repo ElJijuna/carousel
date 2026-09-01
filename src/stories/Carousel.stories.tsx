@@ -19,6 +19,7 @@ import {
   MockSplitCard,
   mockCalendarMonth,
   mockCards,
+  mockCoverSlides,
   mockData,
   mockDays,
   mockDefaultDayId,
@@ -747,5 +748,60 @@ export const DayCalendar: Story = {
         {selectedDay ? <MockDayAgenda day={selectedDay} /> : null}
       </View>
     );
+  },
+};
+
+/**
+ * A coverflow: the card in front is full size, its neighbours shrink and fade
+ * back, and all of it is arithmetic on one number.
+ *
+ * Each slide reads its own `progress` through `MockCoverSlide`'s
+ * `useCarouselSlide` — `0` while it is the active card, travelling to `±1` as
+ * the deck scrolls it a page away — and turns it into a scale and an opacity.
+ * No animation library is involved, and none needs to be: the value updates on
+ * every scroll frame, including mid-drag, so the deck responds to a half-swipe
+ * rather than snapping between two states.
+ *
+ * The subscription is per slide, not per carousel. A slide more than a page
+ * away is pinned at `±1` and does not re-render while you drag somewhere else,
+ * which is the cost `trackActiveSlides` documents and this hook exists to
+ * avoid — so this stays affordable on a deck far longer than six cards.
+ *
+ * `peek` is what makes the effect visible at all: without a sliver of the
+ * neighbours on screen there is nothing to scale.
+ *
+ * `useCarouselSlide` needs the slide's own index, and `children` slides have to
+ * carry it themselves — `renderItem` is handed one. `mockCoverSlides` is where
+ * that happens.
+ *
+ * A clone is the same element with the same index, so it mirrors whatever its
+ * original is doing. That comes out right here rather than by luck: `progress`
+ * is pinned at `±1` beyond a page, which is exactly what a card peeking in from
+ * the far end should look like.
+ */
+export const Coverflow: Story = {
+  argTypes: { peek: { control: 'object' } },
+  args: {
+    testID: 'carousel',
+    visibleSlides: 1,
+    spacing: 16,
+    peek: { base: 96, 560: 56, 420: 32 },
+    // `infinite` rather than `loop`: a deck with a gap on one side has no card
+    // to scale down there, so the effect only reads at the ends if the clones
+    // fill them. Album art is static, which is exactly the case the `infinite`
+    // warning about cloned slides does not apply to.
+    infinite: true,
+    components: { Arrow: MockArrow, Dot: MockDot },
+    // The peeking neighbours are the subject here, and overlaid arrows sit
+    // exactly on top of them — so the controls go under the deck instead.
+    slots: { arrows: 'below' },
+    // Room for the card's shadow, inside the track. A horizontal scroller
+    // cannot clip one axis and leave the other overflowing — the browser
+    // forces both — so the track cuts anything drawn outside a slide's box,
+    // and a shadow is drawn outside it. The room has to come from within.
+    slideStyle: { paddingVertical: 20 },
+    accessibilityLabel: 'Albums',
+    slideLabel: (index: number, total: number) => `Album ${index + 1} of ${total}`,
+    children: mockCoverSlides(),
   },
 };

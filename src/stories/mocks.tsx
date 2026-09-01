@@ -10,6 +10,7 @@
  */
 import type { ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCarouselSlide } from '../CarouselSlideContext';
 import type {
   CarouselArrowSlotProps,
   CarouselDotSlotProps,
@@ -279,6 +280,35 @@ const styles = StyleSheet.create({
   agendaTitle: { fontSize: 14, color: palette.calendarInk },
   agendaLocation: { fontSize: 12, color: palette.calendarMuted, marginTop: 2 },
   agendaEmpty: { fontSize: 13, color: palette.calendarMuted },
+
+  cover: {
+    height: 260,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: palette.splitBorder,
+    backgroundColor: palette.surface,
+    // The art runs to the card's edge, so the corners have to clip it.
+    overflow: 'hidden',
+    shadowColor: palette.shadow,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
+  },
+  coverArt: { width: '100%', height: 184 },
+  coverBody: { padding: 12 },
+  coverTitle: { fontSize: 15, fontWeight: '600', color: palette.ink },
+  coverArtist: { fontSize: 13, color: palette.caption, marginTop: 2 },
+  coverBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: palette.accent,
+  },
+  coverBadgeText: { fontSize: 11, fontWeight: '600', color: palette.surface },
 });
 
 /** Round arrow button. Goes translucent rather than unmounting at the ends. */
@@ -784,3 +814,90 @@ export const MockDayAgenda = ({ day }: { day: MockDay }) => (
     )}
   </View>
 );
+
+/** One album in the coverflow story. */
+export interface MockCover {
+  id: string;
+  title: string;
+  artist: string;
+  /** Which entry of {@link mockImages} fills the card's art. */
+  image: keyof typeof mockImages;
+}
+
+/** Six invented albums, for the coverflow story. */
+export const mockCovers: readonly MockCover[] = [
+  { id: 'tide', title: 'Tide Tables', artist: 'Harbour Lights', image: 'harbour' },
+  { id: 'meadow', title: 'Long Meadow', artist: 'The Understory', image: 'meadow' },
+  { id: 'first-light', title: 'First Light', artist: 'Ana Dawn', image: 'dawn' },
+  { id: 'violet-hour', title: 'Violet Hour', artist: 'Nocturne Club', image: 'dusk' },
+  { id: 'low-water', title: 'Low Water', artist: 'Harbour Lights', image: 'harbour' },
+  { id: 'after-rain', title: 'After the Rain', artist: 'The Understory', image: 'meadow' },
+];
+
+/**
+ * How far the neighbours shrink and fade at a full page away.
+ *
+ * Small on purpose: the effect is there to say which card is the subject, and
+ * a card that halves in size reads as broken rather than as further away.
+ */
+const COVER_SCALE_RANGE = 0.12;
+const COVER_FADE_RANGE = 0.5;
+
+/**
+ * An album cover that reacts to where the deck is, with no animation library.
+ *
+ * {@link useCarouselSlide} hands this slide its own `progress` — `0` while it
+ * is the active card, travelling to `±1` as it is scrolled a page away — so
+ * scale and fade are plain arithmetic on a number that updates every scroll
+ * frame. The sign says which side it is leaving on, which nothing here needs:
+ * both neighbours should look equally far away, hence the `Math.abs`.
+ *
+ * Only the slides within a page of active re-render at that rate; the store
+ * pins everything further out at `±1`, which is what makes this affordable on
+ * a long deck. See `useSlideStore.ts`.
+ */
+export const MockCoverSlide = ({ cover, index }: { cover: MockCover; index: number }) => {
+  // `children` slides own their index — `renderItem` would be handed one.
+  const { isActive, progress } = useCarouselSlide(index);
+  const distance = Math.min(Math.abs(progress), 1);
+  return (
+    <View
+      testID={`cover-${cover.id}`}
+      style={[styles.cover, { transform: [{ scale: 1 - distance * COVER_SCALE_RANGE }] }]}
+    >
+      {/*
+        Only the art fades. Fading the whole card would take the title and the
+        artist below the contrast the a11y addon checks for — a neighbour is
+        meant to look further away, not to become unreadable.
+      */}
+      <Image
+        style={[styles.coverArt, { opacity: 1 - distance * COVER_FADE_RANGE }]}
+        resizeMode="cover"
+        source={{ uri: mockImages[cover.image] }}
+        accessibilityLabel={mockImageLabels[cover.image]}
+      />
+      <View style={styles.coverBody}>
+        <Text style={styles.coverTitle} numberOfLines={1}>
+          {cover.title}
+        </Text>
+        <Text style={styles.coverArtist} numberOfLines={1}>
+          {cover.artist}
+        </Text>
+      </View>
+      {/*
+        `isActive` is the discrete answer to the same question `progress` gives
+        continuously: it flips once, at the page boundary, so a badge driven by
+        it does not flicker halfway through a drag.
+      */}
+      {isActive ? (
+        <View style={styles.coverBadge} testID={`cover-${cover.id}-active`}>
+          <Text style={styles.coverBadgeText}>Now playing</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+};
+
+/** The covers as slides, each told which index it is. */
+export const mockCoverSlides = () =>
+  mockCovers.map((cover, index) => <MockCoverSlide key={cover.id} cover={cover} index={index} />);

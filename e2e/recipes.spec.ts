@@ -169,3 +169,74 @@ test.describe('day calendar', () => {
     await expect(page.getByTestId(/^entry-/)).toHaveCount(0);
   });
 });
+
+test.describe('coverflow', () => {
+  /**
+   * The horizontal scale a card is currently drawn at.
+   *
+   * `.first()` because `infinite` renders a clone of each end, which repeats
+   * the testID; the first match is the real slide, since the leading clone is
+   * a copy of the *last* card.
+   */
+  const scaleOf = (page: Parameters<typeof pageWidth>[0], id: string): Promise<number> =>
+    page
+      .getByTestId(`cover-${id}`)
+      .first()
+      .evaluate((el) => {
+        const matrix = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+        return Number(matrix.a.toFixed(2));
+      });
+
+  test('scales each card by how far it is from the front', async ({ page }) => {
+    await openStory(page, 'coverflow');
+
+    expect(await scaleOf(page, 'tide')).toBe(1);
+    expect(await scaleOf(page, 'meadow')).toBeLessThan(1);
+    await expect(page.getByTestId('cover-tide-active').first()).toBeVisible();
+
+    await page.getByTestId('arrow-next').click();
+    await restingOffset(page);
+
+    // The roles swap: nothing here is a per-slide flag the story maintains,
+    // only `progress` read from where each slide happens to be.
+    expect(await scaleOf(page, 'meadow')).toBe(1);
+    expect(await scaleOf(page, 'tide')).toBeLessThan(1);
+    await expect(page.getByTestId('cover-meadow-active').first()).toBeVisible();
+  });
+
+  test('follows the scroll continuously, not in two steps', async ({ page }) => {
+    await openStory(page, 'coverflow');
+    const resting = await scaleOf(page, 'meadow');
+
+    // Sampled inside one evaluate, mid-scroll, for two reasons: assigning
+    // `scrollLeft` on a scroll-snap container gets re-snapped unless snapping
+    // comes off, and a track that stops scrolling settles onto the nearest
+    // page a moment later — so a reading taken afterwards is always one of the
+    // two resting values, and would pass against a two-state effect.
+    const samples = await page.evaluate(
+      async (step: number) => {
+        const track = document.querySelector('[data-testid="carousel-track"]') as HTMLElement;
+        const card = document.querySelector('[data-testid="cover-meadow"]') as HTMLElement;
+        const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+        const scale = () => new DOMMatrixReadOnly(getComputedStyle(card).transform).a;
+
+        track.style.scrollSnapType = 'none';
+        const readings: number[] = [];
+        for (let taken = 0; taken < 6; taken++) {
+          track.scrollLeft += step;
+          await frame();
+          readings.push(Number(scale().toFixed(2)));
+        }
+        return readings;
+      },
+      Math.round((await pageWidth(page)) / 12),
+    );
+
+    // Every reading between the two resting states, and always growing: the
+    // card comes forward with the scroll rather than jumping when it arrives.
+    expect(samples.every((scale, index) => index === 0 || scale >= (samples[index - 1] ?? 0))).toBe(
+      true,
+    );
+    expect(samples.some((scale) => scale > resting && scale < 1)).toBe(true);
+  });
+});
