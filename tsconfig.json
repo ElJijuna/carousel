@@ -1,13 +1,13 @@
 {
-  "extends": "super-configs/tsconfig/react-native",
-  "compilerOptions": {
-    "noEmit": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    "types": ["jest", "node"]
-  },
-  "include": ["src", ".storybook", "*.config.ts", "*.config.mjs"],
-  "exclude": ["node_modules", "lib", "coverage", "storybook-static", "docs"]
+    "extends": "super-configs/tsconfig/react-native",
+    "compilerOptions": {
+        "noEmit": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUncheckedIndexedAccess": true,
+        "types": ["jest", "node"]
+    },
+    "include": ["src", ".storybook", "*.config.ts", "*.config.mjs"],
+    "exclude": ["node_modules", "lib", "coverage", "storybook-static", "docs"]
 }

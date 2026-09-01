@@ -674,12 +674,14 @@ const agendaFor = (index: number): MockAgendaEntry[] => {
   // Rotated with `slice` rather than read at `[i % length]`, so the pool is
   // walked without an index the compiler has to be told cannot miss.
   const offset = index % agendaPool.length;
-  return [...agendaPool.slice(offset), ...agendaPool.slice(0, offset)]
-    .slice(0, (index % 3) + 1)
-    // Rotating the pool picks *which* entries a day gets; a day still reads
-    // top to bottom in time order, the way an agenda has to.
-    .sort((a, b) => a.time.localeCompare(b.time))
-    .map((entry, slot) => ({ id: `day-${index}-entry-${slot}`, ...entry }));
+  return (
+    [...agendaPool.slice(offset), ...agendaPool.slice(0, offset)]
+      .slice(0, (index % 3) + 1)
+      // Rotating the pool picks *which* entries a day gets; a day still reads
+      // top to bottom in time order, the way an agenda has to.
+      .sort((a, b) => a.time.localeCompare(b.time))
+      .map((entry, slot) => ({ id: `day-${index}-entry-${slot}`, ...entry }))
+  );
 };
 
 const buildDay = (index: number, weekday: string, spoken: string): MockDay => {
