@@ -2,7 +2,7 @@
     "name": "@real-native/carousel-example",
     "version": "0.0.0",
     "private": true,
-    "description": "Native host for the carousel recipes \u2014 the same code the Storybook renders on react-native-web, running on real iOS and Android.",
+    "description": "Native host for the carousel recipes — the same code the Storybook renders on react-native-web, running on real iOS and Android.",
     "main": "index.ts",
     "scripts": {
         "start": "expo start",
@@ -12,6 +12,8 @@
     },
     "dependencies": {
         "expo": "~57.0.18",
+        "expo-blur": "~57.0.2",
+        "expo-linear-gradient": "~57.0.1",
         "expo-status-bar": "~57.0.1",
         "react": "19.2.3",
         "react-native": "0.86.3",
