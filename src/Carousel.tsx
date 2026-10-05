@@ -779,7 +779,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
             { marginHorizontal: resolvedBleed > 0 ? -resolvedBleed : 0 },
           ]}
           onLayout={resolvedBleed > 0 ? onLayout : undefined}
-          testID={testID === undefined ? undefined : `${testID}-track-wrapper`}
+          testID={testID === undefined ? 'carousel-track-wrapper' : `${testID}-track-wrapper`}
         >
           <SlideStoreProvider value={slideStore}>{track}</SlideStoreProvider>
           {at('overlay')(arrowsNode, arrowsPosition)}

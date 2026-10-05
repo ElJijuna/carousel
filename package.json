@@ -19,7 +19,18 @@
 				"default": "./lib/commonjs/index.js"
 			}
 		},
-		"./package.json": "./package.json"
+		"./package.json": "./package.json",
+		"./testing": {
+			"react-native": "./src/testing.ts",
+			"import": {
+				"types": "./lib/typescript/module/testing.d.ts",
+				"default": "./lib/module/testing.js"
+			},
+			"require": {
+				"types": "./lib/typescript/commonjs/testing.d.ts",
+				"default": "./lib/commonjs/testing.js"
+			}
+		}
 	},
 	"files": [
 		"lib",
@@ -79,7 +90,8 @@
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0",
-		"react-native": ">=0.74.0"
+		"react-native": ">=0.74.0",
+		"@testing-library/react-native": ">=12.4.0"
 	},
 	"devDependencies": {
 		"@babel/core": "^7.26.0",
@@ -146,5 +158,10 @@
 			]
 		],
 		"exclude": "{**/{__tests__,__fixtures__,__mocks__,stories}/**,**/*.{spec,test,stories}.{ts,tsx}}"
+	},
+	"peerDependenciesMeta": {
+		"@testing-library/react-native": {
+			"optional": true
+		}
 	}
 }

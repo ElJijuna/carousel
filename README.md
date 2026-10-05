@@ -69,6 +69,7 @@ peerDependencies: react, react-native
 - [Platform support](#platform-support)
 - [API reference](#api-reference)
 - [Troubleshooting](#troubleshooting)
+- [Testing](#testing)
 - [Contributing](#contributing)
 
 ---
@@ -878,6 +879,34 @@ It pauses while the app is backgrounded and while a drag is in progress. It also
 
 **`infinite` shows duplicated media.**
 That is the clone page. Use `loop` instead for slides that cannot be duplicated.
+
+---
+
+## Testing
+
+Test renderers do not calculate native layout. Use the optional testing entry point
+to supply a width before asserting slide sizes or responsive pages:
+
+```tsx
+import { render, screen } from '@testing-library/react-native';
+import { View } from 'react-native';
+import { Carousel } from '@real-native/carousel';
+import { layoutCarousel } from '@real-native/carousel/testing';
+
+await render(
+  <Carousel testID="carousel" visibleSlides={{ base: 2, 400: 1 }}>
+    <View /><View /><View />
+  </Carousel>,
+);
+await layoutCarousel(screen.getByTestId('carousel'), { width: 360 });
+```
+
+Install `@testing-library/react-native` as a dev dependency to use this helper.
+It is an optional peer and is not imported by the main library entry point.
+`layoutCarousel` works with children and `data`, adds `bleed` to the root width,
+and can be called again after a resize or rerender. `height` is optional and defaults
+to `0`; the helper dispatches a layout event rather than calculating visual layout.
+When passing the track wrapper directly, provide its expanded width.
 
 ---
 

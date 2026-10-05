@@ -5,6 +5,7 @@ import { AccessibilityInfo, Pressable, Text, View } from 'react-native';
 import { Carousel } from './Carousel';
 import { useCarousel } from './CarouselContext';
 import { useCarouselSlide } from './CarouselSlideContext';
+import { layoutCarousel } from './testing';
 import type {
   CarouselArrowSlotProps,
   CarouselDotSlotProps,
@@ -66,9 +67,7 @@ const WIDTH = 300;
 
 /** Give the carousel a width, since nothing lays out in the test renderer. */
 const layout = async (testID = 'c', width = WIDTH) => {
-  await fireEvent(screen.getByTestId(testID), 'layout', {
-    nativeEvent: { layout: { width, height: 200, x: 0, y: 0 } },
-  });
+  await layoutCarousel(screen.getByTestId(testID), { width, height: 200 });
 };
 
 /** Simulate a single scroll frame, mid-flight. */
