@@ -884,6 +884,35 @@ That is the clone page. Use `loop` instead for slides that cannot be duplicated.
 
 ## Testing
 
+### Jest package resolution
+
+The `react-native` export points to TypeScript source for Metro. To make Jest load
+compiled CommonJS instead, enable the package's `jest` condition:
+
+```js
+// tooling/jest/ui.config.mjs (or your Jest config)
+export default {
+  preset: '@react-native/jest-preset',
+  testEnvironmentOptions: {
+    customExportConditions: ['jest', 'react-native'],
+  },
+};
+```
+
+If you extend a shared config, merge its `testEnvironmentOptions` and preserve its
+existing export conditions when adding `jest`. The package puts `jest` before
+`react-native`, so it wins when both are enabled. Jest does not activate this custom
+condition automatically; see [Jest's configuration documentation](https://jestjs.io/docs/29.7/configuration#testenvironmentoptions-object).
+
+This applies to both `@real-native/carousel` and `@real-native/carousel/testing`.
+The published CommonJS files need no transformation, so no carousel-specific exception
+in `transformIgnorePatterns` is needed. Keep any exceptions required by React Native
+and other dependencies. Custom resolvers must honour `exports` for this to apply.
+When testing a local checkout through its package name, run `npm run build` first;
+published packages already include `lib`.
+
+### Layout helper
+
 Test renderers do not calculate native layout. Use the optional testing entry point
 to supply a width before asserting slide sizes or responsive pages:
 
