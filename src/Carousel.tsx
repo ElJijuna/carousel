@@ -172,6 +172,8 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     slideStyle,
     slideHeight,
     paginationStyle,
+    paginationPlacement = 'bottom',
+    paginationInset = 0,
     arrowsStyle,
     accessibilityLabel = 'Carousel',
     paginationLabel = 'Carousel pages',
@@ -687,11 +689,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
       <View
         {...webGroup}
         accessibilityLabel={paginationLabel}
-        style={[
-          paginationPosition === 'overlay' ? styles.overlay : null,
-          styles.paginationRow,
-          paginationStyle,
-        ]}
+        style={[styles.paginationRow, paginationPosition === 'overlay' ? null : paginationStyle]}
         pointerEvents="box-none"
       >
         {Array.from({ length: pageCount }, (_, index) => (
@@ -707,6 +705,35 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
             accessibilityLabel={pageLabel(index, pageCount)}
           />
         ))}
+      </View>
+    );
+  }
+
+  if (paginationNode && paginationPosition === 'overlay') {
+    const insets =
+      typeof paginationInset === 'number'
+        ? {
+            top: paginationInset,
+            bottom: paginationInset,
+            left: paginationInset,
+            right: paginationInset,
+          }
+        : paginationInset;
+    // Anchor only one vertical edge so the pagination keeps its own height.
+    // This wrapper also positions custom Pagination slots consistently.
+    const overlayStyle: ViewStyle = {
+      position: 'absolute',
+      left: insets.left ?? 0,
+      right: insets.right ?? 0,
+      [paginationPlacement]: insets[paginationPlacement] ?? 0,
+    };
+    paginationNode = (
+      <View
+        pointerEvents="box-none"
+        testID={testID === undefined ? undefined : `${testID}-pagination`}
+        style={[overlayStyle, paginationStyle]}
+      >
+        {paginationNode}
       </View>
     );
   }

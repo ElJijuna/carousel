@@ -326,3 +326,28 @@ test('fill-height slides follow the track height in both modes and after resize'
     }
   }
 });
+
+for (const placement of ['top', 'bottom'] as const) {
+  test(`overlay pagination respects ${placement} and horizontal safe-area insets`, async ({
+    page,
+  }) => {
+    await openStory(page, 'overlay-pagination', `paginationPlacement:${placement}`);
+    const track = await page.getByTestId('carousel-track').boundingBox();
+    const pagination = await page.getByTestId('carousel-pagination').boundingBox();
+    expect(track).not.toBeNull();
+    expect(pagination).not.toBeNull();
+    if (!track || !pagination) {
+      throw new Error('Missing track or pagination layout');
+    }
+    expect(pagination.x - track.x).toBeCloseTo(10, 0);
+    expect(track.x + track.width - pagination.x - pagination.width).toBeCloseTo(20, 0);
+    if (placement === 'top') {
+      expect(pagination.y - track.y).toBeCloseTo(44, 0);
+    } else {
+      expect(track.y + track.height - pagination.y - pagination.height).toBeCloseTo(34, 0);
+    }
+    expect(pagination.height).toBeLessThan(60);
+    await page.getByTestId('dot-1').click();
+    await expectSelectedPage(page, 1);
+  });
+}

@@ -465,6 +465,19 @@ export interface CarouselProps<TItem = unknown> {
   components?: CarouselComponents;
   /** Where each slot is placed. See {@link CarouselSlotLayout}. */
   slots?: CarouselSlotLayout;
+  /**
+   * Edge for overlaid pagination. Only applies to slots.pagination='overlay'.
+   * @default 'bottom'
+   */
+  paginationPlacement?: 'top' | 'bottom';
+  /**
+   * Offsets in dp for overlaid pagination, measured from the track edges.
+   * A number applies to every edge; an object can supply safe-area insets.
+   * Only the chosen vertical edge and left/right are used. Missing edges are 0.
+   * Insets are supplied by the consumer; safe areas are not read automatically.
+   * @default 0
+   */
+  paginationInset?: number | Partial<Record<'top' | 'bottom' | 'left' | 'right', number>>;
 
   // ── Styling ──
   /** Style for the outermost wrapper. */

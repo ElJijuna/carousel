@@ -356,6 +356,27 @@ const Fraction = ({ page, pageCount }: CarouselPaginationSlotProps) => (
 | `pagination` | `'overlay'`, `'above'`, `'below'` | `'below'` |
 | `playPause` | `'overlay'`, `'above'`, `'below'` | `'overlay'` |
 
+For overlaid pagination, `paginationPlacement` selects `"top"` or `"bottom"` (the default).
+`paginationInset` accepts a number for every side or an object of edge offsets in dp.
+Pass your safe-area insets directly; the carousel does not read them automatically:
+
+```tsx
+<Carousel
+  slots={{ pagination: 'overlay' }}
+  paginationPlacement="top"
+  paginationInset={insets}
+  components={{ Dot }}
+>
+  {slides}
+</Carousel>
+```
+
+Only the selected vertical edge and `left`/`right` are applied, so pagination keeps its
+own height. These props also position custom `Pagination` slots; `paginationStyle`
+can override the overlay wrapper's styles. Insets are relative to the track, including
+any `bleed`. Above/below pagination is unaffected. Overlay pagination now defaults to
+the bottom edge instead of filling the track and centering vertically.
+
 Overlaid slots use `pointerEvents="box-none"`, so the track underneath stays draggable.
 
 ---
@@ -778,6 +799,8 @@ Full generated docs: `npm run docs` (TypeDoc → `docs/api`).
 | `interval` | `number` | `3000` | Milliseconds between advances. |
 | `components` | `CarouselComponents` | `{}` | The chrome to render. |
 | `slots` | `CarouselSlotLayout` | `{}` | Where each slot goes. |
+| `paginationPlacement` | `"top" \| "bottom"` | `"bottom"` | Vertical edge for overlay pagination. |
+| `paginationInset` | `number \| { top?, bottom?, left?, right? }` | `0` | Overlay offsets in dp; accepts safe-area insets. |
 | `style` | `StyleProp<ViewStyle>` | — | Outer wrapper. |
 | `trackStyle` | `StyleProp<ViewStyle>` | — | The scrollable track. |
 | `slideStyle` | `StyleProp<ViewStyle>` | — | Every slide wrapper. |

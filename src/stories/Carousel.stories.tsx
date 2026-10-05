@@ -916,3 +916,16 @@ export const FillHeight: Story = {
     </View>
   ),
 };
+
+/** Overlay pagination anchors to one edge and respects supplied safe-area insets. */
+export const OverlayPagination: Story = {
+  args: {
+    testID: 'carousel',
+    style: { height: 300 },
+    slots: { pagination: 'overlay' },
+    paginationPlacement: 'top',
+    paginationInset: { top: 44, bottom: 34, left: 10, right: 20 },
+    components: { Dot: MockDot },
+    children: mockSlides(3),
+  },
+};

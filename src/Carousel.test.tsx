@@ -1267,6 +1267,95 @@ describe('slot placement', () => {
   });
 });
 
+describe('overlay pagination placement', () => {
+  it.each(['top', 'bottom'] as const)(
+    'anchors dots at %s with safe-area offsets',
+    async (placement) => {
+      const view = await render(
+        <Carousel
+          testID="c"
+          slots={{ pagination: 'overlay' }}
+          paginationPlacement={placement}
+          paginationInset={{ top: 44, bottom: 34, left: 10, right: 20 }}
+          components={{ Dot: MockDot }}
+        >
+          {slides(3)}
+        </Carousel>,
+      );
+      await layout();
+      expect(screen.getByTestId('c-pagination')).toHaveStyle({
+        position: 'absolute',
+        left: 10,
+        right: 20,
+        [placement]: placement === 'top' ? 44 : 34,
+      });
+      expect(screen.getByTestId('c-pagination')).not.toHaveStyle({
+        [placement === 'top' ? 'bottom' : 'top']: 0,
+      });
+      await fireEvent.press(screen.getByTestId('dot-1'));
+      expect(screen.getByText('[1]')).toBeTruthy();
+      await view.rerender(
+        <Carousel
+          testID="c"
+          slots={{ pagination: 'overlay' }}
+          paginationPlacement={placement}
+          paginationInset={12}
+          components={{ Dot: MockDot }}
+        >
+          {slides(3)}
+        </Carousel>,
+      );
+      expect(screen.getByTestId('c-pagination')).toHaveStyle({
+        left: 12,
+        right: 12,
+        [placement]: 12,
+      });
+    },
+  );
+
+  it('positions a custom Pagination slot at the bottom by default and permits style overrides', async () => {
+    await render(
+      <Carousel
+        testID="c"
+        slots={{ pagination: 'overlay' }}
+        paginationInset={{ bottom: 34 }}
+        paginationStyle={{ bottom: 42 }}
+        components={{ Pagination: MockPagination }}
+      >
+        {slides(3)}
+      </Carousel>,
+    );
+    await layout();
+    expect(screen.getByTestId('c-pagination')).toHaveStyle({
+      position: 'absolute',
+      bottom: 42,
+      left: 0,
+      right: 0,
+    });
+    expect(screen.getByTestId('fraction')).toHaveTextContent('1 / 3');
+  });
+
+  it.each(['above', 'below'] as const)(
+    'leaves %s pagination in normal layout',
+    async (position) => {
+      await render(
+        <Carousel
+          testID="c"
+          slots={{ pagination: position }}
+          paginationPlacement="top"
+          paginationInset={44}
+          paginationStyle={{ marginTop: 8 }}
+          components={{ Dot: MockDot }}
+        >
+          {slides(3)}
+        </Carousel>,
+      );
+      expect(screen.queryByTestId('c-pagination')).toBeNull();
+      expect(screen.getByLabelText('Carousel pages')).toHaveStyle({ marginTop: 8 });
+    },
+  );
+});
+
 // ─── Snap lifecycle ───────────────────────────────────────────────────────────
 
 describe('snap lifecycle', () => {
