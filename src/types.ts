@@ -445,6 +445,9 @@ export interface CarouselProps<TItem = unknown> {
    * Advance automatically. Pauses while the user drags and while the app is
    * backgrounded.
    *
+   * Paused while the OS reduced-motion setting is enabled. Turning that
+   * setting off resumes rotation unless the user manually paused it.
+   *
    * WCAG 2.2.2 requires a way to stop content that moves on its own, so render
    * a `PlayPauseControl` slot (or your own control via {@link useCarousel})
    * whenever this is on.

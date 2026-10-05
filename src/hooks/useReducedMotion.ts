@@ -4,7 +4,8 @@ import { AccessibilityInfo } from 'react-native';
 /**
  * Track the operating system's "reduce motion" accessibility setting.
  *
- * The carousel jumps straight to a page instead of animating when this is on.
+ * The carousel pauses automatic rotation and jumps straight to a page instead
+ * of animating when this is on.
  * Unlike the web, where a stylesheet could in principle undo it, the value is
  * the only thing standing between a motion-sensitive user and a sliding
  * viewport — so it is read on mount and kept live for the lifetime of the

@@ -672,6 +672,71 @@ describe('autoPlay', () => {
     jest.useRealTimers();
   });
 
+  it('honours the initial OS preference and live changes in controls and navigation', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+    let listener: ((enabled: boolean) => void) | undefined;
+    jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation((event, handler) => {
+      if (event === 'reduceMotionChanged') {
+        listener = handler;
+      }
+      return { remove: jest.fn() };
+    });
+    const ref = createRef<CarouselHandle>();
+    const onPageChanged = jest.fn();
+    try {
+      await render(
+        <Carousel
+          testID="c"
+          ref={ref}
+          autoPlay
+          interval={1000}
+          onPageChanged={onPageChanged}
+          components={{ PlayPauseControl: MockPlayPause }}
+        >
+          {slides(4)}
+        </Carousel>,
+      );
+      await layout();
+      expect(ref.current?.isPlaying).toBe(false);
+      expect(screen.getByTestId('play-pause')).toHaveTextContent('play');
+      await act(async () => {
+        jest.advanceTimersByTime(3000);
+      });
+      expect(onPageChanged).not.toHaveBeenCalled();
+      await act(async () => {
+        ref.current?.next();
+      });
+      expect(ref.current?.page).toBe(1);
+      await settleAt(WIDTH);
+      onPageChanged.mockClear();
+      await act(async () => {
+        listener?.(false);
+      });
+      expect(ref.current?.isPlaying).toBe(true);
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      expect(onPageChanged).toHaveBeenCalledWith(
+        2,
+        expect.objectContaining({ source: 'autoplay' }),
+      );
+      await settleAt(WIDTH * 2);
+      await act(async () => {
+        listener?.(true);
+      });
+      expect(ref.current?.isPlaying).toBe(false);
+      onPageChanged.mockClear();
+      await fireEvent.press(screen.getByTestId('play-pause'));
+      await act(async () => {
+        jest.advanceTimersByTime(3000);
+      });
+      expect(onPageChanged).not.toHaveBeenCalled();
+    } finally {
+      jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
+      jest.restoreAllMocks();
+    }
+  });
+
   it('advances on the interval', async () => {
     const onPageChanged = jest.fn();
     await render(

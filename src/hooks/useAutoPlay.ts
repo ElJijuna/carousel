@@ -9,6 +9,8 @@ export interface UseAutoPlayOptions {
   interval: number;
   /** Whether the user is dragging the track right now. */
   isDragging: boolean;
+  /** Whether the OS requests reduced motion; suspends automatic rotation. */
+  reducedMotion?: boolean;
   /** Called on each tick. Kept in a ref, so it need not be stable. */
   onTick: () => void;
 }
@@ -17,11 +19,11 @@ export interface UseAutoPlayOptions {
 export interface AutoPlayState {
   /**
    * Whether the rotation is running *right now* — false while paused by the
-   * user, mid-drag, or with the app in the background. This is what a
-   * play/pause control should render from.
+   * user, mid-drag, with reduced motion enabled, or with the app in the
+   * background. This is what a play/pause control should render from.
    */
   isPlaying: boolean;
-  /** Resume the rotation, overriding an earlier pause. */
+  /** Request rotation, overriding a manual pause but respecting reduced motion. */
   play: () => void;
   /** Stop the rotation. */
   pause: () => void;
@@ -42,6 +44,7 @@ export function useAutoPlay({
   enabled,
   interval,
   isDragging,
+  reducedMotion = false,
   onTick,
 }: UseAutoPlayOptions): AutoPlayState {
   const [wanted, setWanted] = useState(enabled);
@@ -75,7 +78,7 @@ export function useAutoPlay({
     };
   }, []);
 
-  const running = enabled && wanted && appActive && !isDragging;
+  const running = enabled && wanted && appActive && !isDragging && !reducedMotion;
 
   useEffect(() => {
     if (!running || interval <= 0) {

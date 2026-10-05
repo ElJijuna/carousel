@@ -651,6 +651,11 @@ The rotation stops on its own while:
 It **wraps at the end even without `loop`**, because a deck that silently stops on the last slide
 reads as broken rather than finished.
 
+The OS “reduce motion” setting pauses autoplay, including when the preference changes
+while mounted. `isPlaying` reports `false`, and `play()` does not override the setting.
+Turning reduced motion off resumes rotation unless you manually paused it. Manual
+navigation remains available without scroll animation.
+
 > **WCAG 2.2.2 requires a way to stop content that moves automatically.** Render a
 > `PlayPauseControl` slot — or your own control via `useCarousel` — whenever `autoPlay` is on. The
 > carousel supplies the behaviour; only you can supply the button.
@@ -675,7 +680,8 @@ reads as broken rather than finished.
 - **`infinite` clones are hidden** with `accessibilityElementsHidden` and
   `importantForAccessibility="no-hide-descendants"`, so the deck is never read twice.
 - **Arrows report `disabled` rather than unmounting**, so focus is never dropped mid-navigation.
-- **Reduced motion is honoured.** With the OS setting on, every programmatic move jumps straight
+- **Reduced motion is honoured.** With the OS setting on, automatic rotation pauses,
+  and every programmatic move jumps straight
   to the page instead of animating.
 - **The track is keyboard operable on web.** It takes focus — a scroll container is not in the tab
   order by default, which leaves a pointer as the only way to move it — and pages with `←` / `→`,

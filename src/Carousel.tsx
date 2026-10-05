@@ -334,6 +334,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
   const handleTick = useCallback(() => navigate(1, undefined, true, 'autoplay'), [navigate]);
   const { isPlaying, play, pause } = useAutoPlay({
     enabled: autoPlay,
+    reducedMotion,
     interval,
     isDragging,
     onTick: handleTick,
