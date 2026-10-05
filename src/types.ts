@@ -370,6 +370,14 @@ export interface CarouselProps<TItem = unknown> {
    */
   peek?: ResponsiveValue<number>;
   /**
+   * Extend the track beyond each horizontal edge of the root, in dp.
+   * Use the parent horizontal padding to reach its edges. Above/below slots
+   * stay aligned with the root. Peek and breakpoints use the expanded width.
+   * Negative and non-finite values are treated as zero.
+   * @default 0
+   */
+  bleed?: number;
+  /**
    * Gap between slides in dp.
    * @default 0
    */

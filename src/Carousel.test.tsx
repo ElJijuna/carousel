@@ -163,6 +163,51 @@ describe('rendering', () => {
   });
 });
 
+describe('bleed', () => {
+  it.each([false, true])(
+    'measures the expanded track and preserves peek (data=%s)',
+    async (virtualized) => {
+      await render(
+        <Carousel
+          testID="c"
+          bleed={24}
+          peek={32}
+          spacing={12}
+          visibleSlides={{ base: 2, 320: 1 }}
+          data={virtualized ? [0, 1, 2, 3] : undefined}
+          renderItem={({ item }) => <Text>{item}</Text>}
+        >
+          {virtualized ? undefined : slides(4)}
+        </Carousel>,
+      );
+      expect(screen.getByTestId('c-track-wrapper')).toHaveStyle({ marginHorizontal: -24 });
+      expect(screen.getByTestId('c')).toHaveStyle({ width: '100%' });
+      await layout('c-track-wrapper', 348);
+      expect(screen.getByLabelText('1 of 4')).toHaveStyle({ width: 136 });
+      expect(screen.getByTestId('c-track').props.contentContainerStyle).toEqual(
+        expect.objectContaining({ paddingHorizontal: 32 }),
+      );
+      expect(screen.getByTestId('c-track').props.snapToOffsets).toEqual([0, 296]);
+      await layout('c-track-wrapper', 448);
+      expect(screen.getByLabelText('1 of 4')).toHaveStyle({ width: 186 });
+    },
+  );
+
+  it.each([0, -24, Number.NaN, Number.POSITIVE_INFINITY])(
+    'keeps root measurement for bleed=%s',
+    async (bleed) => {
+      await render(
+        <Carousel testID="c" bleed={bleed}>
+          {slides(3)}
+        </Carousel>,
+      );
+      await layout();
+      expect(screen.getByLabelText('1 of 3')).toHaveStyle({ width: WIDTH });
+      expect(screen.getByTestId('c-track-wrapper')).toHaveStyle({ marginHorizontal: 0 });
+    },
+  );
+});
+
 // ─── Pagination chrome ────────────────────────────────────────────────────────
 
 describe('dots', () => {

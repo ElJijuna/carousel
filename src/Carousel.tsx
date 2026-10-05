@@ -155,6 +155,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     visibleSlides,
     peek,
     spacing = 0,
+    bleed = 0,
     loop = false,
     infinite = false,
     page: controlledPage,
@@ -187,6 +188,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     testID,
   } = props;
 
+  const resolvedBleed = Number.isFinite(bleed) ? Math.max(0, bleed) : 0;
   const isVirtualized = data !== undefined;
   const childSlides = useMemo(
     () => (isVirtualized ? [] : Children.toArray(children)),
@@ -728,7 +730,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
       <View
         {...webGroup}
         style={[styles.root, style]}
-        onLayout={onLayout}
+        onLayout={resolvedBleed === 0 ? onLayout : undefined}
         accessibilityLabel={accessibilityLabel}
         testID={testID}
       >
@@ -736,7 +738,14 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
         {at('above')(paginationNode, paginationPosition)}
         {at('above')(playPauseNode, playPausePosition)}
 
-        <View style={styles.trackWrapper}>
+        <View
+          style={[
+            styles.trackWrapper,
+            { marginHorizontal: resolvedBleed > 0 ? -resolvedBleed : 0 },
+          ]}
+          onLayout={resolvedBleed > 0 ? onLayout : undefined}
+          testID={testID === undefined ? undefined : `${testID}-track-wrapper`}
+        >
           <SlideStoreProvider value={slideStore}>{track}</SlideStoreProvider>
           {at('overlay')(arrowsNode, arrowsPosition)}
           {at('overlay')(paginationNode, paginationPosition)}

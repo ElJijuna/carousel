@@ -195,6 +195,20 @@ which is exactly the re-render a virtualized list exists to avoid.
 </Carousel>
 ```
 
+To reach the edges of a parent with horizontal padding, pass that padding as `bleed`:
+
+```tsx
+<View style={{ paddingHorizontal: 24 }}>
+  <Carousel bleed={24} peek={32} spacing={12}>
+    {slides}
+  </Carousel>
+</View>
+```
+
+Only the track and its overlay controls extend; above/below controls retain the root's
+alignment. `peek` and responsive breakpoints use the expanded track's measured width.
+The parent must allow overflow for the extended track to remain visible.
+
 The slide width falls out of the container's measured width:
 
 ```text
@@ -730,6 +744,7 @@ Full generated docs: `npm run docs` (TypeDoc → `docs/api`).
 | `keyExtractor` | `(item, index) => string` | index | Stable key for a `data` entry. |
 | `visibleSlides` | `ResponsiveValue<number>` | `1` | Slides per page (integer ≥ 1). |
 | `peek` | `ResponsiveValue<number>` | `0` | Neighbour sliver at each edge, in dp. |
+| `bleed` | `number` | `0` | Extend the track at each horizontal edge, in dp. |
 | `spacing` | `number` | `0` | Gap between slides, in dp. |
 | `loop` | `boolean` | `false` | Wrap by rewinding. |
 | `infinite` | `boolean` | `false` | Wrap seamlessly, by cloning. Implies `loop`. |
