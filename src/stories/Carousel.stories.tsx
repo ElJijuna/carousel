@@ -890,3 +890,29 @@ export const Gallery: Story = {
     );
   },
 };
+
+/** Slides fill the bounded track in both rendering modes, without measuring height. */
+export const FillHeight: Story = {
+  args: { slideHeight: 'fill', components: { Dot: MockDot } },
+  render: (args) => (
+    <View>
+      <View style={{ height: 300 }}>
+        <Carousel {...args} testID="fill-children" style={{ flex: 1 }}>
+          <View testID="fill-child" style={{ flex: 1, backgroundColor: palette.accent }} />
+          <View style={{ flex: 1, backgroundColor: palette.ink }} />
+        </Carousel>
+      </View>
+      <View style={{ height: 300 }}>
+        <Carousel
+          {...args}
+          testID="fill-data"
+          style={{ flex: 1 }}
+          data={[palette.accent, palette.ink]}
+          renderItem={({ item, index }) => (
+            <View testID={`fill-item-${index}`} style={{ flex: 1, backgroundColor: item }} />
+          )}
+        />
+      </View>
+    </View>
+  ),
+};

@@ -75,6 +75,8 @@ const styles = StyleSheet.create({
   // Same bargain one level down: the scroller fills the wrapper when there is
   // height to fill, and is sized by its slides when there is not.
   track: { flexGrow: 1, flexShrink: 1 },
+  fillContent: { flexGrow: 1, alignItems: 'stretch' },
+  fillSlide: { alignSelf: 'stretch' },
   overlay: {
     position: 'absolute',
     top: 0,
@@ -168,6 +170,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     style,
     trackStyle,
     slideStyle,
+    slideHeight,
     paginationStyle,
     arrowsStyle,
     accessibilityLabel = 'Carousel',
@@ -453,8 +456,11 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
   // biome-ignore lint/correctness/useExhaustiveDependencies: rtl is a genuine input
   const offsets = useMemo(() => snapOffsets(geometry, rtl), [geometry, rtl]);
   const contentContainerStyle = useMemo(
-    () => ({ paddingHorizontal: resolvedPeek }),
-    [resolvedPeek],
+    () =>
+      slideHeight === 'fill'
+        ? { paddingHorizontal: resolvedPeek, ...styles.fillContent }
+        : { paddingHorizontal: resolvedPeek },
+    [resolvedPeek, slideHeight],
   );
 
   const slideWrapperStyle = useCallback(
@@ -463,10 +469,11 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
         width: slideWidth,
         marginEnd: renderedIndex < geometry.renderedSlideCount - 1 ? spacing : 0,
       },
+      slideHeight === 'fill' ? styles.fillSlide : null,
       webSnapSlide(renderedIndex % visible === 0),
       slideStyle,
     ],
-    [slideWidth, spacing, geometry.renderedSlideCount, visible, slideStyle],
+    [slideWidth, spacing, geometry.renderedSlideCount, visible, slideStyle, slideHeight],
   );
 
   const activeRange = useMemo(

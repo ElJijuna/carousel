@@ -294,3 +294,35 @@ test.describe('gallery', () => {
     await expect.poll(() => stripOffset(page)).toBeGreaterThan(0);
   });
 });
+
+test('fill-height slides follow the track height in both modes and after resize', async ({
+  page,
+}) => {
+  await page.goto('/iframe.html?id=carousel--fill-height&viewMode=story');
+  await expect(page.getByTestId('fill-children-track')).toBeVisible();
+  await expect(page.getByTestId('fill-data-track')).toBeVisible();
+  for (const height of [300, 420]) {
+    await page.evaluate((nextHeight) => {
+      for (const id of ['fill-children', 'fill-data']) {
+        const parent = document.querySelector(`[data-testid="${id}"]`)?.parentElement;
+        if (parent) {
+          parent.style.height = `${nextHeight}px`;
+        }
+      }
+    }, height);
+    for (const [mode, slideId] of [
+      ['children', 'fill-child'],
+      ['data', 'fill-item-0'],
+    ] as const) {
+      await expect
+        .poll(async () => {
+          const track = await page.getByTestId(`fill-${mode}-track`).boundingBox();
+          const slide = await page.getByTestId(slideId).boundingBox();
+          return track && slide ? Math.abs(track.height - slide.height) : Number.POSITIVE_INFINITY;
+        })
+        .toBeLessThanOrEqual(1);
+      const slide = await page.getByTestId(slideId).boundingBox();
+      expect(slide?.height).toBeGreaterThan(height - 60);
+    }
+  }
+});

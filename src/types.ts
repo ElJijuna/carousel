@@ -378,6 +378,13 @@ export interface CarouselProps<TItem = unknown> {
    */
   bleed?: number;
   /**
+   * Stretch slide wrappers to the track's available height. The carousel must
+   * have a bounded height (an explicit height or flex within a bounded parent).
+   * Slide content can use flex: 1 to fill its wrapper. slideStyle can override
+   * the stretch alignment. Omit to keep content-driven slide sizing.
+   */
+  slideHeight?: 'fill';
+  /**
    * Gap between slides in dp.
    * @default 0
    */

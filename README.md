@@ -209,6 +209,22 @@ Only the track and its overlay controls extend; above/below controls retain the 
 alignment. `peek` and responsive breakpoints use the expanded track's measured width.
 The parent must allow overflow for the extended track to remain visible.
 
+For slides that fill the available height, use `slideHeight="fill"` inside a bounded
+parent. The track takes the height left by above/below controls, and slide content
+can use `flex: 1` to fill its wrapper. No height measurement is needed:
+
+```tsx
+<View style={{ height: 400 }}>
+  <Carousel style={{ flex: 1 }} slideHeight="fill">
+    <View style={{ flex: 1, backgroundColor: 'navy' }} />
+    <View style={{ flex: 1, backgroundColor: 'teal' }} />
+  </Carousel>
+</View>
+```
+
+This works with both children and `data`/`renderItem`. Omit `slideHeight` for
+content-sized slides; `slideStyle` can override the stretch alignment.
+
 The slide width falls out of the container's measured width:
 
 ```text
@@ -745,6 +761,7 @@ Full generated docs: `npm run docs` (TypeDoc → `docs/api`).
 | `visibleSlides` | `ResponsiveValue<number>` | `1` | Slides per page (integer ≥ 1). |
 | `peek` | `ResponsiveValue<number>` | `0` | Neighbour sliver at each edge, in dp. |
 | `bleed` | `number` | `0` | Extend the track at each horizontal edge, in dp. |
+| `slideHeight` | `"fill"` | — | Stretch slides to the available track height. |
 | `spacing` | `number` | `0` | Gap between slides, in dp. |
 | `loop` | `boolean` | `false` | Wrap by rewinding. |
 | `infinite` | `boolean` | `false` | Wrap seamlessly, by cloning. Implies `loop`. |
