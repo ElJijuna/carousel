@@ -351,3 +351,23 @@ for (const placement of ['top', 'bottom'] as const) {
     await expectSelectedPage(page, 1);
   });
 }
+
+test('DefaultDot supports keyboard activation and current-page semantics in both styles', async ({
+  page,
+}) => {
+  await openStory(page, 'default-indicators');
+  for (const id of ['carousel', 'lines']) {
+    const carousel = page.getByTestId(id);
+    const second = carousel.getByRole('button', { name: 'Page 2', exact: true });
+    const box = await second.boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(44);
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+    await second.focus();
+    await second.press('Enter');
+    await expect(second).toHaveAttribute('aria-current', 'page');
+    await expect(second).not.toHaveAttribute('aria-selected');
+    await expect(carousel.getByRole('button', { name: 'Page 1', exact: true })).not.toHaveAttribute(
+      'aria-current',
+    );
+  }
+});

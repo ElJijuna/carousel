@@ -5,7 +5,8 @@ import { fn } from 'storybook/test';
 
 import { Carousel } from '../Carousel';
 import { useCarousel } from '../CarouselContext';
-import type { CarouselHandle, CarouselPaginationSlotProps } from '../types';
+import { DefaultDot } from '../DefaultDot';
+import type { CarouselDotSlotProps, CarouselHandle, CarouselPaginationSlotProps } from '../types';
 import {
   MockArrow,
   MockCreditCard,
@@ -928,4 +929,23 @@ export const OverlayPagination: Story = {
     components: { Dot: MockDot },
     children: mockSlides(3),
   },
+};
+
+const LineIndicator = (props: CarouselDotSlotProps) => (
+  <DefaultDot
+    {...props}
+    style={{ width: 24, height: 3, borderRadius: 2 }}
+    selectedStyle={{ width: 36, backgroundColor: palette.accent }}
+  />
+);
+
+/** Optional built-in indicators: the same accessible button, two visual styles. */
+export const DefaultIndicators: Story = {
+  args: { testID: 'carousel', components: { Dot: DefaultDot }, children: mockSlides(3) },
+  render: (args) => (
+    <View>
+      <Carousel {...args} />
+      <Carousel {...args} testID="lines" components={{ Dot: LineIndicator }} />
+    </View>
+  ),
 };

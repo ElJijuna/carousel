@@ -25,9 +25,11 @@ A **headless**, dependency-free horizontal carousel for React Native, Expo and r
 **[▶ Live Storybook](https://eljijuna.github.io/carousel/)** — every story running on
 react-native-web, with the mocked chrome you can copy from `src/stories/mocks.tsx`.
 
+![Carousel with arrows and pagination](https://raw.githubusercontent.com/ElJijuna/carousel/main/assets/readme/carousel-arrows.png)
+
 The component owns every behaviour — measuring, paging, snapping, wrapping, auto-play,
 accessibility — and draws **nothing but the scrollable track**. Every arrow, dot and control comes
-from you, so the carousel never fights your design system.
+from you, or from the optional `DefaultDot`, so the carousel never fights your design system.
 
 ```text
 dependencies: {}          ← no runtime dependencies at all
@@ -53,6 +55,7 @@ peerDependencies: react, react-native
 - [Quick start](#quick-start)
 - [Slides: `children` vs `data`](#slides-children-vs-data)
 - [Layout: `visibleSlides`, `peek`, `spacing`](#layout-visibleslides-peek-spacing)
+- [Carousel anatomy](#carousel-anatomy)
 - [Responsive props](#responsive-props)
 - [The chrome slots](#the-chrome-slots)
 - [`useCarousel`](#usecarousel)
@@ -118,28 +121,13 @@ There is nothing else to do. No native dependencies, no linking, no config plugi
 
 ## Quick start
 
-The carousel renders no UI of its own, so start by giving it something to render:
+The carousel renders no UI of its own. Opt into `DefaultDot` for ready-to-use pagination:
 
 ```tsx
-import { Carousel } from '@real-native/carousel';
-import { Pressable, Text, View } from 'react-native';
-
-const Dot = ({ selected, onPress, accessibilityLabel }) => (
-  <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel}>
-    <View
-      style={{
-        width: 8,
-        height: 8,
-        margin: 4,
-        borderRadius: 4,
-        backgroundColor: selected ? '#2563eb' : '#cbd5e1',
-      }}
-    />
-  </Pressable>
-);
+import { Carousel, DefaultDot } from '@real-native/carousel';
 
 export const Onboarding = () => (
-  <Carousel components={{ Dot }}>
+  <Carousel components={{ Dot: DefaultDot }}>
     <Screen title="Welcome" />
     <Screen title="Stay in sync" />
     <Screen title="Get started" />
@@ -262,6 +250,22 @@ so the same carousel in an ordinary column is still sized by its slides.
 
 ---
 
+## Carousel anatomy
+
+![Annotated carousel: root, track, slides, peek, spacing, bleed, slots and all prop groups](https://raw.githubusercontent.com/ElJijuna/carousel/main/assets/readme/carousel-anatomy.svg)
+
+The diagram shows an interior page of an `infinite` carousel with two slides per page.
+Dimensions are in dp. Layout props change the geometry; behaviour, labels and callbacks
+are grouped below the diagram. See the [API reference](#api-reference) for types and defaults.
+
+### Example layouts
+
+![Split card with neighboring slide previews](https://raw.githubusercontent.com/ElJijuna/carousel/main/assets/readme/carousel-split-cards.png)
+
+![Virtualized credit-card carousel](https://raw.githubusercontent.com/ElJijuna/carousel/main/assets/readme/carousel-credit-cards.png)
+
+---
+
 ## Responsive props
 
 `visibleSlides` and `peek` also accept a **breakpoint map**, keyed by max width in dp:
@@ -320,15 +324,31 @@ disabled. The whole arrow pair is hidden when there is only one page.
 
 ### Dot and Pagination
 
-`Dot` is the easy path: one element per page, in a row the carousel arranges.
+`Dot` is one element per page, in a row the carousel arranges. Use `DefaultDot`
+without writing another `Pressable`:
 
 ```tsx
-const Dot = ({ index, total, selected, onPress, accessibilityLabel }: CarouselDotSlotProps) => (
-  <Pressable onPress={onPress} accessibilityLabel={accessibilityLabel}>
-    <View style={selected ? styles.dotOn : styles.dotOff} />
-  </Pressable>
+import { Carousel, DefaultDot, type CarouselDotSlotProps } from '@real-native/carousel';
+
+const LineIndicator = (props: CarouselDotSlotProps) => (
+  <DefaultDot
+    {...props}
+    style={{ width: 24, height: 3, borderRadius: 2, backgroundColor: '#cbd5e1' }}
+    selectedStyle={{ width: 36, backgroundColor: '#2563eb' }}
+  />
 );
+
+<Carousel components={{ Dot: DefaultDot }}>{slides}</Carousel>;
+<Carousel components={{ Dot: LineIndicator }}>{slides}</Carousel>;
 ```
+
+`DefaultDot` owns the button role, page label, selected accessibility state and press
+handler. On web, the current page uses `aria-current="page"`. Its default target has a 44 × 44 dp minimum and `hitSlop={8}`. `style` styles
+only the visual indicator; `selectedStyle` is applied last when selected.
+`containerStyle` styles the press target, and `hitSlop` and `testID` are optional.
+You can still supply your own `Dot`, and no indicators render until you opt in.
+
+![DefaultDot as dots and line indicators](https://raw.githubusercontent.com/ElJijuna/carousel/main/assets/readme/carousel-indicators.png)
 
 `Pagination` is for anything that is not one-element-per-page — a `3 / 8` counter, a progress bar,
 a scrubber:
@@ -827,6 +847,8 @@ Full generated docs: `npm run docs` (TypeDoc → `docs/api`).
 ```ts
 import {
   Carousel,
+  DefaultDot,
+  type DefaultDotProps,
   useCarousel,
   useCarouselOptional,
   useCarouselSlide,
