@@ -1,3 +1,16 @@
+## [0.6.0](https://github.com/ElJijuna/carousel/compare/v0.5.0...v0.6.0) (2026-10-06)
+
+### Features
+
+* add 'bleed' prop to Carousel for extended track visibility and update tests ([6f7d92b](https://github.com/ElJijuna/carousel/commit/6f7d92bccb6a778157cbd044136abea04c0c72f5))
+* add 'slideHeight' prop to Carousel for height-stretching slides and update documentation and tests ([c777010](https://github.com/ElJijuna/carousel/commit/c7770104032a7dd8ac38d954010cf14da3107ea8))
+* add DefaultDot component for pagination with keyboard support ([b3c06b8](https://github.com/ElJijuna/carousel/commit/b3c06b895eb3a3b3df638cceb12bf761fdc10f48))
+* add Jest package resolution and testing utilities for export conditions ([d8e7098](https://github.com/ElJijuna/carousel/commit/d8e7098dec9ad0bb839a2540f6a555a87c3a7bcd))
+* add overlay pagination with customizable placement and insets, including tests and documentation updates ([d028bb0](https://github.com/ElJijuna/carousel/commit/d028bb0bdac34b8858aa211f5bb0a81a84bf58db))
+* add testing documentation and utilities for Carousel component, including layout helper and related tests ([6d306e9](https://github.com/ElJijuna/carousel/commit/6d306e9db30e754cf8cbac00f20e901ebbae1580))
+* enhance autoplay functionality to respect OS reduce motion setting and update related tests and documentation ([692f46b](https://github.com/ElJijuna/carousel/commit/692f46b1f24a850b858233ed474d38f9708837ac))
+* update markdownlint and commitlint configurations for improved linting rules ([ab976ef](https://github.com/ElJijuna/carousel/commit/ab976ef323d53611ab3c2d7b5b0538083b0672d6))
+
 ## [0.5.0](https://github.com/ElJijuna/carousel/compare/v0.4.1...v0.5.0) (2026-09-01)
 
 ### Features
