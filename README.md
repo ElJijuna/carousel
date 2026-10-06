@@ -25,9 +25,11 @@ A **headless**, dependency-free horizontal carousel for React Native, Expo and r
 **[▶ Live Storybook](https://eljijuna.github.io/carousel/)** — every story running on
 react-native-web, with the mocked chrome you can copy from `src/stories/mocks.tsx`.
 
+![Carousel with arrows and pagination](https://raw.githubusercontent.com/ElJijuna/carousel/main/assets/readme/carousel-arrows.png)
+
 The component owns every behaviour — measuring, paging, snapping, wrapping, auto-play,
 accessibility — and draws **nothing but the scrollable track**. Every arrow, dot and control comes
-from you, so the carousel never fights your design system.
+from you, or from the optional `DefaultDot`, so the carousel never fights your design system.
 
 ```text
 dependencies: {}          ← no runtime dependencies at all
@@ -53,6 +55,7 @@ peerDependencies: react, react-native
 - [Quick start](#quick-start)
 - [Slides: `children` vs `data`](#slides-children-vs-data)
 - [Layout: `visibleSlides`, `peek`, `spacing`](#layout-visibleslides-peek-spacing)
+- [Carousel anatomy](#carousel-anatomy)
 - [Responsive props](#responsive-props)
 - [The chrome slots](#the-chrome-slots)
 - [`useCarousel`](#usecarousel)
@@ -69,6 +72,7 @@ peerDependencies: react, react-native
 - [Platform support](#platform-support)
 - [API reference](#api-reference)
 - [Troubleshooting](#troubleshooting)
+- [Testing](#testing)
 - [Contributing](#contributing)
 
 ---
@@ -117,28 +121,13 @@ There is nothing else to do. No native dependencies, no linking, no config plugi
 
 ## Quick start
 
-The carousel renders no UI of its own, so start by giving it something to render:
+The carousel renders no UI of its own. Opt into `DefaultDot` for ready-to-use pagination:
 
 ```tsx
-import { Carousel } from '@real-native/carousel';
-import { Pressable, Text, View } from 'react-native';
-
-const Dot = ({ selected, onPress, accessibilityLabel }) => (
-  <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel}>
-    <View
-      style={{
-        width: 8,
-        height: 8,
-        margin: 4,
-        borderRadius: 4,
-        backgroundColor: selected ? '#2563eb' : '#cbd5e1',
-      }}
-    />
-  </Pressable>
-);
+import { Carousel, DefaultDot } from '@real-native/carousel';
 
 export const Onboarding = () => (
-  <Carousel components={{ Dot }}>
+  <Carousel components={{ Dot: DefaultDot }}>
     <Screen title="Welcome" />
     <Screen title="Stay in sync" />
     <Screen title="Get started" />
@@ -195,6 +184,36 @@ which is exactly the re-render a virtualized list exists to avoid.
 </Carousel>
 ```
 
+To reach the edges of a parent with horizontal padding, pass that padding as `bleed`:
+
+```tsx
+<View style={{ paddingHorizontal: 24 }}>
+  <Carousel bleed={24} peek={32} spacing={12}>
+    {slides}
+  </Carousel>
+</View>
+```
+
+Only the track and its overlay controls extend; above/below controls retain the root's
+alignment. `peek` and responsive breakpoints use the expanded track's measured width.
+The parent must allow overflow for the extended track to remain visible.
+
+For slides that fill the available height, use `slideHeight="fill"` inside a bounded
+parent. The track takes the height left by above/below controls, and slide content
+can use `flex: 1` to fill its wrapper. No height measurement is needed:
+
+```tsx
+<View style={{ height: 400 }}>
+  <Carousel style={{ flex: 1 }} slideHeight="fill">
+    <View style={{ flex: 1, backgroundColor: 'navy' }} />
+    <View style={{ flex: 1, backgroundColor: 'teal' }} />
+  </Carousel>
+</View>
+```
+
+This works with both children and `data`/`renderItem`. Omit `slideHeight` for
+content-sized slides; `slideStyle` can override the stretch alignment.
+
 The slide width falls out of the container's measured width:
 
 ```text
@@ -228,6 +247,22 @@ needs, with a top bar above it and its dots pinned to the bottom:
 
 Nothing changes for the default case: with an auto height there is no free space to distribute,
 so the same carousel in an ordinary column is still sized by its slides.
+
+---
+
+## Carousel anatomy
+
+![Annotated carousel: root, track, slides, peek, spacing, bleed, slots and all prop groups](https://raw.githubusercontent.com/ElJijuna/carousel/main/assets/readme/carousel-anatomy.svg)
+
+The diagram shows an interior page of an `infinite` carousel with two slides per page.
+Dimensions are in dp. Layout props change the geometry; behaviour, labels and callbacks
+are grouped below the diagram. See the [API reference](#api-reference) for types and defaults.
+
+### Example layouts
+
+![Split card with neighboring slide previews](https://raw.githubusercontent.com/ElJijuna/carousel/main/assets/readme/carousel-split-cards.png)
+
+![Virtualized credit-card carousel](https://raw.githubusercontent.com/ElJijuna/carousel/main/assets/readme/carousel-credit-cards.png)
 
 ---
 
@@ -289,15 +324,31 @@ disabled. The whole arrow pair is hidden when there is only one page.
 
 ### Dot and Pagination
 
-`Dot` is the easy path: one element per page, in a row the carousel arranges.
+`Dot` is one element per page, in a row the carousel arranges. Use `DefaultDot`
+without writing another `Pressable`:
 
 ```tsx
-const Dot = ({ index, total, selected, onPress, accessibilityLabel }: CarouselDotSlotProps) => (
-  <Pressable onPress={onPress} accessibilityLabel={accessibilityLabel}>
-    <View style={selected ? styles.dotOn : styles.dotOff} />
-  </Pressable>
+import { Carousel, DefaultDot, type CarouselDotSlotProps } from '@real-native/carousel';
+
+const LineIndicator = (props: CarouselDotSlotProps) => (
+  <DefaultDot
+    {...props}
+    style={{ width: 24, height: 3, borderRadius: 2, backgroundColor: '#cbd5e1' }}
+    selectedStyle={{ width: 36, backgroundColor: '#2563eb' }}
+  />
 );
+
+<Carousel components={{ Dot: DefaultDot }}>{slides}</Carousel>;
+<Carousel components={{ Dot: LineIndicator }}>{slides}</Carousel>;
 ```
+
+`DefaultDot` owns the button role, page label, selected accessibility state and press
+handler. On web, the current page uses `aria-current="page"`. Its default target has a 44 × 44 dp minimum and `hitSlop={8}`. `style` styles
+only the visual indicator; `selectedStyle` is applied last when selected.
+`containerStyle` styles the press target, and `hitSlop` and `testID` are optional.
+You can still supply your own `Dot`, and no indicators render until you opt in.
+
+![DefaultDot as dots and line indicators](https://raw.githubusercontent.com/ElJijuna/carousel/main/assets/readme/carousel-indicators.png)
 
 `Pagination` is for anything that is not one-element-per-page — a `3 / 8` counter, a progress bar,
 a scrubber:
@@ -325,6 +376,27 @@ const Fraction = ({ page, pageCount }: CarouselPaginationSlotProps) => (
 | `arrows` | `'overlay'`, `'above'`, `'below'` | `'overlay'` |
 | `pagination` | `'overlay'`, `'above'`, `'below'` | `'below'` |
 | `playPause` | `'overlay'`, `'above'`, `'below'` | `'overlay'` |
+
+For overlaid pagination, `paginationPlacement` selects `"top"` or `"bottom"` (the default).
+`paginationInset` accepts a number for every side or an object of edge offsets in dp.
+Pass your safe-area insets directly; the carousel does not read them automatically:
+
+```tsx
+<Carousel
+  slots={{ pagination: 'overlay' }}
+  paginationPlacement="top"
+  paginationInset={insets}
+  components={{ Dot }}
+>
+  {slides}
+</Carousel>
+```
+
+Only the selected vertical edge and `left`/`right` are applied, so pagination keeps its
+own height. These props also position custom `Pagination` slots; `paginationStyle`
+can override the overlay wrapper's styles. Insets are relative to the track, including
+any `bleed`. Above/below pagination is unaffected. Overlay pagination now defaults to
+the bottom edge instead of filling the track and centering vertically.
 
 Overlaid slots use `pointerEvents="box-none"`, so the track underneath stays draggable.
 
@@ -621,6 +693,11 @@ The rotation stops on its own while:
 It **wraps at the end even without `loop`**, because a deck that silently stops on the last slide
 reads as broken rather than finished.
 
+The OS “reduce motion” setting pauses autoplay, including when the preference changes
+while mounted. `isPlaying` reports `false`, and `play()` does not override the setting.
+Turning reduced motion off resumes rotation unless you manually paused it. Manual
+navigation remains available without scroll animation.
+
 > **WCAG 2.2.2 requires a way to stop content that moves automatically.** Render a
 > `PlayPauseControl` slot — or your own control via `useCarousel` — whenever `autoPlay` is on. The
 > carousel supplies the behaviour; only you can supply the button.
@@ -645,7 +722,8 @@ reads as broken rather than finished.
 - **`infinite` clones are hidden** with `accessibilityElementsHidden` and
   `importantForAccessibility="no-hide-descendants"`, so the deck is never read twice.
 - **Arrows report `disabled` rather than unmounting**, so focus is never dropped mid-navigation.
-- **Reduced motion is honoured.** With the OS setting on, every programmatic move jumps straight
+- **Reduced motion is honoured.** With the OS setting on, automatic rotation pauses,
+  and every programmatic move jumps straight
   to the page instead of animating.
 - **The track is keyboard operable on web.** It takes focus — a scroll container is not in the tab
   order by default, which leaves a pointer as the only way to move it — and pages with `←` / `→`,
@@ -730,6 +808,8 @@ Full generated docs: `npm run docs` (TypeDoc → `docs/api`).
 | `keyExtractor` | `(item, index) => string` | index | Stable key for a `data` entry. |
 | `visibleSlides` | `ResponsiveValue<number>` | `1` | Slides per page (integer ≥ 1). |
 | `peek` | `ResponsiveValue<number>` | `0` | Neighbour sliver at each edge, in dp. |
+| `bleed` | `number` | `0` | Extend the track at each horizontal edge, in dp. |
+| `slideHeight` | `"fill"` | — | Stretch slides to the available track height. |
 | `spacing` | `number` | `0` | Gap between slides, in dp. |
 | `loop` | `boolean` | `false` | Wrap by rewinding. |
 | `infinite` | `boolean` | `false` | Wrap seamlessly, by cloning. Implies `loop`. |
@@ -740,6 +820,8 @@ Full generated docs: `npm run docs` (TypeDoc → `docs/api`).
 | `interval` | `number` | `3000` | Milliseconds between advances. |
 | `components` | `CarouselComponents` | `{}` | The chrome to render. |
 | `slots` | `CarouselSlotLayout` | `{}` | Where each slot goes. |
+| `paginationPlacement` | `"top" \| "bottom"` | `"bottom"` | Vertical edge for overlay pagination. |
+| `paginationInset` | `number \| { top?, bottom?, left?, right? }` | `0` | Overlay offsets in dp; accepts safe-area insets. |
 | `style` | `StyleProp<ViewStyle>` | — | Outer wrapper. |
 | `trackStyle` | `StyleProp<ViewStyle>` | — | The scrollable track. |
 | `slideStyle` | `StyleProp<ViewStyle>` | — | Every slide wrapper. |
@@ -765,6 +847,8 @@ Full generated docs: `npm run docs` (TypeDoc → `docs/api`).
 ```ts
 import {
   Carousel,
+  DefaultDot,
+  type DefaultDotProps,
   useCarousel,
   useCarouselOptional,
   useCarouselSlide,
@@ -817,6 +901,63 @@ It pauses while the app is backgrounded and while a drag is in progress. It also
 
 **`infinite` shows duplicated media.**
 That is the clone page. Use `loop` instead for slides that cannot be duplicated.
+
+---
+
+## Testing
+
+### Jest package resolution
+
+The `react-native` export points to TypeScript source for Metro. To make Jest load
+compiled CommonJS instead, enable the package's `jest` condition:
+
+```js
+// tooling/jest/ui.config.mjs (or your Jest config)
+export default {
+  preset: '@react-native/jest-preset',
+  testEnvironmentOptions: {
+    customExportConditions: ['jest', 'react-native'],
+  },
+};
+```
+
+If you extend a shared config, merge its `testEnvironmentOptions` and preserve its
+existing export conditions when adding `jest`. The package puts `jest` before
+`react-native`, so it wins when both are enabled. Jest does not activate this custom
+condition automatically; see [Jest's configuration documentation](https://jestjs.io/docs/29.7/configuration#testenvironmentoptions-object).
+
+This applies to both `@real-native/carousel` and `@real-native/carousel/testing`.
+The published CommonJS files need no transformation, so no carousel-specific exception
+in `transformIgnorePatterns` is needed. Keep any exceptions required by React Native
+and other dependencies. Custom resolvers must honour `exports` for this to apply.
+When testing a local checkout through its package name, run `npm run build` first;
+published packages already include `lib`.
+
+### Layout helper
+
+Test renderers do not calculate native layout. Use the optional testing entry point
+to supply a width before asserting slide sizes or responsive pages:
+
+```tsx
+import { render, screen } from '@testing-library/react-native';
+import { View } from 'react-native';
+import { Carousel } from '@real-native/carousel';
+import { layoutCarousel } from '@real-native/carousel/testing';
+
+await render(
+  <Carousel testID="carousel" visibleSlides={{ base: 2, 400: 1 }}>
+    <View /><View /><View />
+  </Carousel>,
+);
+await layoutCarousel(screen.getByTestId('carousel'), { width: 360 });
+```
+
+Install `@testing-library/react-native` as a dev dependency to use this helper.
+It is an optional peer and is not imported by the main library entry point.
+`layoutCarousel` works with children and `data`, adds `bleed` to the root width,
+and can be called again after a resize or rerender. `height` is optional and defaults
+to `0`; the helper dispatches a layout event rather than calculating visual layout.
+When passing the track wrapper directly, provide its expanded width.
 
 ---
 

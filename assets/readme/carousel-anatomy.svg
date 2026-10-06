@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1880" viewBox="0 0 1200 1880" role="img" aria-labelledby="title desc">
+<title id="title">Carousel anatomy and prop guide</title>
+<desc id="desc">Annotated interior page: two active slides, clipped neighbors, peek gutters, spacing, track bleed, above and below slots, overlay arrows and inset pagination. Comparisons and a grouped reference describe every Carousel prop.</desc>
+<defs><marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto-start-reverse"><path d="M0 0 L6 3 L0 6Z" fill="#475569"/></marker><clipPath id="track"><rect x="120" y="322" width="800" height="214" rx="14"/></clipPath></defs>
+<style>text{font-family:Arial,Helvetica,sans-serif;fill:#0f172a}.muted{fill:#475569}.mono{font-family:Consolas,monospace}.accent{fill:#4338ca}.small{font-size:16px}.prop{font-size:14px;font-family:Consolas,monospace;fill:#4338ca}.body{font-size:18px}.heading{font-size:22px;font-weight:700}.label{font-size:18px;font-weight:700}</style>
+<rect width="1200" height="1880" rx="24" fill="#f8fafc"/>
+
+<text x="48" y="62" class="heading">CAROUSEL / ANATOMY</text>
+<text x="48" y="102" class="heading">One track. Your content. Optional controls.</text>
+<text x="48" y="136" class="body muted">Interior page · infinite=true · visibleSlides=2 · peek=40 · spacing=16 · bleed=24</text>
+<rect x="40" y="164" width="1120" height="534" rx="20" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<rect x="144" y="211" width="752" height="430" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="156" y="201" class="label muted">Root / style</text>
+<rect x="164" y="228" width="712" height="55" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+<text x="520" y="263" class="body" text-anchor="middle">Above slot: slots.* = &quot;above&quot;</text>
+<line x1="120" y1="312" x2="920" y2="312" stroke="#475569" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<text x="520.0" y="300" class="small" text-anchor="middle">Measured track width = 800 dp</text>
+<rect x="120" y="322" width="800" height="214" rx="14" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+<g clip-path="url(#track)">
+<rect x="-208" y="340" width="352" height="178" rx="12" fill="#ede9fe" stroke="#c4b5fd" stroke-width="2"/>
+<rect x="160" y="340" width="352" height="178" rx="12" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+<rect x="528" y="340" width="352" height="178" rx="12" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+<rect x="896" y="340" width="352" height="178" rx="12" fill="#ede9fe" stroke="#c4b5fd" stroke-width="2"/>
+<text x="336" y="409" class="heading" text-anchor="middle">Slide A</text>
+<text x="336" y="441" class="body" text-anchor="middle">slideWidth = 352</text>
+<text x="336" y="476" class="small muted" text-anchor="middle">slideStyle + your content</text>
+<text x="704" y="409" class="heading" text-anchor="middle">Slide B</text>
+<text x="704" y="441" class="body" text-anchor="middle">slideWidth = 352</text>
+<text x="704" y="476" class="small muted" text-anchor="middle">A + B = one page</text>
+</g>
+<circle cx="183" cy="430" r="20" fill="#fff" stroke="#cbd5e1"/>
+<text x="183" y="438" class="heading" text-anchor="middle">‹</text>
+<circle cx="857" cy="430" r="20" fill="#fff" stroke="#cbd5e1"/>
+<text x="857" y="438" class="heading" text-anchor="middle">›</text>
+<rect x="395" y="486" width="250" height="34" rx="17" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+<circle cx="478" cy="503" r="5" fill="#94a3b8"/>
+<circle cx="500" cy="503" r="5" fill="#2563eb"/>
+<circle cx="522" cy="503" r="5" fill="#94a3b8"/>
+<circle cx="544" cy="503" r="5" fill="#94a3b8"/>
+<line x1="928" y1="520" x2="928" y2="536" stroke="#475569" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<text x="944" y="523" class="small muted">bottom inset</text>
+<rect x="164" y="584" width="712" height="40" rx="12" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+<text x="520" y="610" class="body" text-anchor="middle">Below slot: slots.* = &quot;below&quot;</text>
+<line x1="120" y1="566" x2="160" y2="566" stroke="#475569" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<text x="140.0" y="554" class="small" text-anchor="middle">peek</text>
+<line x1="512" y1="566" x2="528" y2="566" stroke="#475569" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<text x="520.0" y="554" class="small" text-anchor="middle">spacing</text>
+<line x1="880" y1="566" x2="920" y2="566" stroke="#475569" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<text x="900.0" y="554" class="small" text-anchor="middle">peek</text>
+<line x1="120" y1="645" x2="144" y2="645" stroke="#475569" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="896" y1="645" x2="920" y2="645" stroke="#475569" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<text x="120" y="678" class="small accent">bleed: track extends past root edges</text>
+<text x="952" y="246" class="label">SECTIONS</text>
+<text x="952" y="281" class="small">Root → style</text>
+<text x="952" y="314" class="small">Track → trackStyle</text>
+<text x="952" y="347" class="small">Slide → slideStyle</text>
+<text x="952" y="380" class="small">Arrows →</text>
+<text x="952" y="403" class="small mono">components.Arrow</text>
+<text x="952" y="446" class="small">Dots / Pagination →</text>
+<text x="952" y="469" class="small mono">components.*</text>
+<text x="952" y="575" class="small muted">Overlay controls sit</text>
+<text x="952" y="598" class="small muted">over the track.</text>
+<text x="952" y="638" class="small muted">Above/below slots</text>
+<text x="952" y="661" class="small muted">keep root alignment.</text>
+<text x="48" y="741" class="heading">HOW LAYOUT PROPS CHANGE THE TRACK</text>
+<rect x="48" y="760" width="356" height="204" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="66" y="794" class="label mono">visibleSlides</text>
+<text x="66" y="823" class="small muted">How many slides form a page</text>
+<rect x="422" y="760" width="356" height="204" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="440" y="794" class="label mono">peek + spacing</text>
+<text x="440" y="823" class="small muted">Reserve edges; separate slides</text>
+<rect x="796" y="760" width="356" height="204" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="814" y="794" class="label mono">slideHeight=&quot;fill&quot;</text>
+<text x="814" y="823" class="small muted">Fill a bounded track height</text>
+<rect x="68" y="848" width="137" height="74" rx="12" fill="#dbeafe"/>
+<rect x="217" y="848" width="137" height="74" rx="12" fill="#dbeafe"/>
+<text x="137" y="891" class="heading" text-anchor="middle">1</text>
+<text x="286" y="891" class="heading" text-anchor="middle">2</text>
+<text x="68" y="948" class="small muted">More slides → narrower slide widths</text>
+<rect x="442" y="848" width="30" height="74" rx="12" fill="#ede9fe"/>
+<rect x="484" y="848" width="107" height="74" rx="12" fill="#dbeafe"/>
+<rect x="603" y="848" width="107" height="74" rx="12" fill="#dbeafe"/>
+<rect x="722" y="848" width="36" height="74" rx="12" fill="#ede9fe"/>
+<text x="442" y="948" class="small muted">Larger peek/gaps → less slide space</text>
+<rect x="816" y="839" width="154" height="94" rx="12" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+<rect x="831" y="851" width="124" height="70" rx="12" fill="#dbeafe"/>
+<rect x="987" y="839" width="142" height="94" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+<rect x="1000" y="892" width="116" height="29" rx="12" fill="#e2e8f0"/>
+<text x="893" y="884" class="label" text-anchor="middle">fill</text>
+<text x="1058" y="912" class="small" text-anchor="middle">content</text>
+<text x="816" y="948" class="small muted">Parent height must be bounded</text>
+<rect x="48" y="986" width="1104" height="58" rx="12" fill="#eef2ff"/>
+<text x="600" y="1022" class="body mono" text-anchor="middle">slideWidth = (trackWidth − 2 × peek − (visibleSlides − 1) × spacing) / visibleSlides</text>
+<text x="48" y="1094" class="heading">PROP MAP / WHAT EACH GROUP CONTROLS</text>
+<rect x="48" y="1120" width="356" height="216" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="64" y="1152" class="label">01  Content</text>
+<text x="64" y="1182" class="prop">children</text>
+<text x="64" y="1201" class="small muted">Static slides in a ScrollView</text>
+<text x="64" y="1221" class="prop">data + renderItem</text>
+<text x="64" y="1240" class="small muted">Virtualized slides in a FlatList</text>
+<text x="64" y="1260" class="prop">keyExtractor</text>
+<text x="64" y="1279" class="small muted">Stable keys for data items</text>
+<rect x="422" y="1120" width="356" height="216" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="438" y="1152" class="label">02  Geometry</text>
+<text x="438" y="1182" class="prop">visibleSlides / peek</text>
+<text x="438" y="1201" class="small muted">Group size and edge previews</text>
+<text x="438" y="1221" class="prop">spacing / bleed</text>
+<text x="438" y="1240" class="small muted">Gaps and track extension</text>
+<text x="438" y="1260" class="prop">slideHeight</text>
+<text x="438" y="1279" class="small muted">&quot;fill&quot; stretches slide wrappers</text>
+<rect x="796" y="1120" width="356" height="216" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="812" y="1152" class="label">03  Navigation</text>
+<text x="812" y="1182" class="prop">page / defaultPage</text>
+<text x="812" y="1201" class="small muted">Controlled / starting page</text>
+<text x="812" y="1221" class="prop">loop / infinite</text>
+<text x="812" y="1240" class="small muted">Rewind / seamless cloned wrap</text>
+<text x="812" y="1260" class="prop">onPageChanged</text>
+<text x="812" y="1279" class="small muted">New page and its source</text>
+<rect x="48" y="1354" width="356" height="216" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="64" y="1386" class="label">04  Controls</text>
+<text x="64" y="1416" class="prop">components / slots</text>
+<text x="64" y="1435" class="small muted">Control UI and coarse position</text>
+<text x="64" y="1455" class="prop">paginationPlacement</text>
+<text x="64" y="1474" class="small muted">Top or bottom overlay edge</text>
+<text x="64" y="1494" class="prop">paginationInset</text>
+<text x="64" y="1513" class="small muted">Consumer-supplied edge offsets</text>
+<rect x="422" y="1354" width="356" height="216" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="438" y="1386" class="label">05  Styling</text>
+<text x="438" y="1416" class="prop">style / trackStyle</text>
+<text x="438" y="1435" class="small muted">Root / scrollable track</text>
+<text x="438" y="1455" class="prop">slideStyle</text>
+<text x="438" y="1474" class="small muted">Every slide wrapper</text>
+<text x="438" y="1494" class="prop">paginationStyle / arrowsStyle</text>
+<text x="438" y="1513" class="small muted">Indicator / arrow container</text>
+<rect x="796" y="1354" width="356" height="216" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="812" y="1386" class="label">06  Automatic rotation</text>
+<text x="812" y="1416" class="prop">autoPlay</text>
+<text x="812" y="1435" class="small muted">Opt into automatic page changes</text>
+<text x="812" y="1455" class="prop">interval</text>
+<text x="812" y="1474" class="small muted">Milliseconds between advances</text>
+<text x="812" y="1494" class="prop">System reduce motion</text>
+<text x="812" y="1513" class="small muted">Suspends autoplay; no scroll animation</text>
+<rect x="48" y="1588" width="356" height="216" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="64" y="1620" class="label">07  Accessibility</text>
+<text x="64" y="1650" class="prop">accessibilityLabel / paginationLabel</text>
+<text x="64" y="1669" class="small muted">Carousel / indicator group names</text>
+<text x="64" y="1689" class="prop">pageLabel / slideLabel / statusLabel</text>
+<text x="64" y="1708" class="small muted">Page, slide and announcement labels</text>
+<text x="64" y="1728" class="prop">previousLabel / nextLabel</text>
+<text x="64" y="1747" class="small muted">Arrow labels</text>
+<text x="64" y="1767" class="prop">pauseLabel / playLabel</text>
+<text x="64" y="1786" class="small muted">Automatic rotation control labels</text>
+<rect x="422" y="1588" width="356" height="216" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="438" y="1620" class="label">08  Interaction</text>
+<text x="438" y="1650" class="prop">onDragStart / onDragEnd</text>
+<text x="438" y="1669" class="small muted">Drag lifecycle callbacks</text>
+<text x="438" y="1689" class="prop">onSnapStart / onSnapEnd</text>
+<text x="438" y="1708" class="small muted">Snap lifecycle callbacks</text>
+<text x="438" y="1728" class="prop">onProgress</text>
+<text x="438" y="1747" class="small muted">Continuous page position + offset</text>
+<text x="438" y="1767" class="prop">trackActiveSlides</text>
+<text x="438" y="1786" class="small muted">isActive in renderItem</text>
+<rect x="796" y="1588" width="356" height="216" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+<text x="812" y="1620" class="label">09  Test hooks + optional UI</text>
+<text x="812" y="1650" class="prop">testID</text>
+<text x="812" y="1669" class="small muted">Root and derived track identifiers</text>
+<text x="812" y="1689" class="prop">layoutCarousel (testing helper)</text>
+<text x="812" y="1708" class="small muted">Supply width in test renderers</text>
+<text x="812" y="1728" class="prop">DefaultDot (optional slot)</text>
+<text x="812" y="1747" class="small muted">Button + label + selected state</text>
+<text x="812" y="1767" class="prop">style / selectedStyle</text>
+<text x="812" y="1786" class="small muted">Restyle dots into line indicators</text>
+<text x="48" y="1840" class="small muted">Peek gutters include the space between active slides and their clipped neighbors. Values are in dp.</text>
+</svg>

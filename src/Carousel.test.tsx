@@ -5,6 +5,7 @@ import { AccessibilityInfo, Pressable, Text, View } from 'react-native';
 import { Carousel } from './Carousel';
 import { useCarousel } from './CarouselContext';
 import { useCarouselSlide } from './CarouselSlideContext';
+import { layoutCarousel } from './testing';
 import type {
   CarouselArrowSlotProps,
   CarouselDotSlotProps,
@@ -66,9 +67,7 @@ const WIDTH = 300;
 
 /** Give the carousel a width, since nothing lays out in the test renderer. */
 const layout = async (testID = 'c', width = WIDTH) => {
-  await fireEvent(screen.getByTestId(testID), 'layout', {
-    nativeEvent: { layout: { width, height: 200, x: 0, y: 0 } },
-  });
+  await layoutCarousel(screen.getByTestId(testID), { width, height: 200 });
 };
 
 /** Simulate a single scroll frame, mid-flight. */
@@ -161,6 +160,51 @@ describe('rendering', () => {
     expect(screen.getByLabelText('1 of 3')).toBeTruthy();
     expect(screen.getByLabelText('3 of 3')).toBeTruthy();
   });
+});
+
+describe('bleed', () => {
+  it.each([false, true])(
+    'measures the expanded track and preserves peek (data=%s)',
+    async (virtualized) => {
+      await render(
+        <Carousel
+          testID="c"
+          bleed={24}
+          peek={32}
+          spacing={12}
+          visibleSlides={{ base: 2, 320: 1 }}
+          data={virtualized ? [0, 1, 2, 3] : undefined}
+          renderItem={({ item }) => <Text>{item}</Text>}
+        >
+          {virtualized ? undefined : slides(4)}
+        </Carousel>,
+      );
+      expect(screen.getByTestId('c-track-wrapper')).toHaveStyle({ marginHorizontal: -24 });
+      expect(screen.getByTestId('c')).toHaveStyle({ width: '100%' });
+      await layout('c-track-wrapper', 348);
+      expect(screen.getByLabelText('1 of 4')).toHaveStyle({ width: 136 });
+      expect(screen.getByTestId('c-track').props.contentContainerStyle).toEqual(
+        expect.objectContaining({ paddingHorizontal: 32 }),
+      );
+      expect(screen.getByTestId('c-track').props.snapToOffsets).toEqual([0, 296]);
+      await layout('c-track-wrapper', 448);
+      expect(screen.getByLabelText('1 of 4')).toHaveStyle({ width: 186 });
+    },
+  );
+
+  it.each([0, -24, Number.NaN, Number.POSITIVE_INFINITY])(
+    'keeps root measurement for bleed=%s',
+    async (bleed) => {
+      await render(
+        <Carousel testID="c" bleed={bleed}>
+          {slides(3)}
+        </Carousel>,
+      );
+      await layout();
+      expect(screen.getByLabelText('1 of 3')).toHaveStyle({ width: WIDTH });
+      expect(screen.getByTestId('c-track-wrapper')).toHaveStyle({ marginHorizontal: 0 });
+    },
+  );
 });
 
 // ─── Pagination chrome ────────────────────────────────────────────────────────
@@ -625,6 +669,71 @@ describe('autoPlay', () => {
   });
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it('honours the initial OS preference and live changes in controls and navigation', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+    let listener: ((enabled: boolean) => void) | undefined;
+    jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation((event, handler) => {
+      if (event === 'reduceMotionChanged') {
+        listener = handler;
+      }
+      return { remove: jest.fn() };
+    });
+    const ref = createRef<CarouselHandle>();
+    const onPageChanged = jest.fn();
+    try {
+      await render(
+        <Carousel
+          testID="c"
+          ref={ref}
+          autoPlay
+          interval={1000}
+          onPageChanged={onPageChanged}
+          components={{ PlayPauseControl: MockPlayPause }}
+        >
+          {slides(4)}
+        </Carousel>,
+      );
+      await layout();
+      expect(ref.current?.isPlaying).toBe(false);
+      expect(screen.getByTestId('play-pause')).toHaveTextContent('play');
+      await act(async () => {
+        jest.advanceTimersByTime(3000);
+      });
+      expect(onPageChanged).not.toHaveBeenCalled();
+      await act(async () => {
+        ref.current?.next();
+      });
+      expect(ref.current?.page).toBe(1);
+      await settleAt(WIDTH);
+      onPageChanged.mockClear();
+      await act(async () => {
+        listener?.(false);
+      });
+      expect(ref.current?.isPlaying).toBe(true);
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      expect(onPageChanged).toHaveBeenCalledWith(
+        2,
+        expect.objectContaining({ source: 'autoplay' }),
+      );
+      await settleAt(WIDTH * 2);
+      await act(async () => {
+        listener?.(true);
+      });
+      expect(ref.current?.isPlaying).toBe(false);
+      onPageChanged.mockClear();
+      await fireEvent.press(screen.getByTestId('play-pause'));
+      await act(async () => {
+        jest.advanceTimersByTime(3000);
+      });
+      expect(onPageChanged).not.toHaveBeenCalled();
+    } finally {
+      jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
+      jest.restoreAllMocks();
+    }
   });
 
   it('advances on the interval', async () => {
@@ -1155,6 +1264,95 @@ describe('slot placement', () => {
 
     expect(screen.getAllByTestId(/^dot-/)).toHaveLength(3);
   });
+});
+
+describe('overlay pagination placement', () => {
+  it.each(['top', 'bottom'] as const)(
+    'anchors dots at %s with safe-area offsets',
+    async (placement) => {
+      const view = await render(
+        <Carousel
+          testID="c"
+          slots={{ pagination: 'overlay' }}
+          paginationPlacement={placement}
+          paginationInset={{ top: 44, bottom: 34, left: 10, right: 20 }}
+          components={{ Dot: MockDot }}
+        >
+          {slides(3)}
+        </Carousel>,
+      );
+      await layout();
+      expect(screen.getByTestId('c-pagination')).toHaveStyle({
+        position: 'absolute',
+        left: 10,
+        right: 20,
+        [placement]: placement === 'top' ? 44 : 34,
+      });
+      expect(screen.getByTestId('c-pagination')).not.toHaveStyle({
+        [placement === 'top' ? 'bottom' : 'top']: 0,
+      });
+      await fireEvent.press(screen.getByTestId('dot-1'));
+      expect(screen.getByText('[1]')).toBeTruthy();
+      await view.rerender(
+        <Carousel
+          testID="c"
+          slots={{ pagination: 'overlay' }}
+          paginationPlacement={placement}
+          paginationInset={12}
+          components={{ Dot: MockDot }}
+        >
+          {slides(3)}
+        </Carousel>,
+      );
+      expect(screen.getByTestId('c-pagination')).toHaveStyle({
+        left: 12,
+        right: 12,
+        [placement]: 12,
+      });
+    },
+  );
+
+  it('positions a custom Pagination slot at the bottom by default and permits style overrides', async () => {
+    await render(
+      <Carousel
+        testID="c"
+        slots={{ pagination: 'overlay' }}
+        paginationInset={{ bottom: 34 }}
+        paginationStyle={{ bottom: 42 }}
+        components={{ Pagination: MockPagination }}
+      >
+        {slides(3)}
+      </Carousel>,
+    );
+    await layout();
+    expect(screen.getByTestId('c-pagination')).toHaveStyle({
+      position: 'absolute',
+      bottom: 42,
+      left: 0,
+      right: 0,
+    });
+    expect(screen.getByTestId('fraction')).toHaveTextContent('1 / 3');
+  });
+
+  it.each(['above', 'below'] as const)(
+    'leaves %s pagination in normal layout',
+    async (position) => {
+      await render(
+        <Carousel
+          testID="c"
+          slots={{ pagination: position }}
+          paginationPlacement="top"
+          paginationInset={44}
+          paginationStyle={{ marginTop: 8 }}
+          components={{ Dot: MockDot }}
+        >
+          {slides(3)}
+        </Carousel>,
+      );
+      expect(screen.queryByTestId('c-pagination')).toBeNull();
+      expect(screen.getByLabelText('Carousel pages')).toHaveStyle({ marginTop: 8 });
+    },
+  );
 });
 
 // ─── Snap lifecycle ───────────────────────────────────────────────────────────

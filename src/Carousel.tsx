@@ -75,6 +75,8 @@ const styles = StyleSheet.create({
   // Same bargain one level down: the scroller fills the wrapper when there is
   // height to fill, and is sized by its slides when there is not.
   track: { flexGrow: 1, flexShrink: 1 },
+  fillContent: { flexGrow: 1, alignItems: 'stretch' },
+  fillSlide: { alignSelf: 'stretch' },
   overlay: {
     position: 'absolute',
     top: 0,
@@ -155,6 +157,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     visibleSlides,
     peek,
     spacing = 0,
+    bleed = 0,
     loop = false,
     infinite = false,
     page: controlledPage,
@@ -167,7 +170,10 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     style,
     trackStyle,
     slideStyle,
+    slideHeight,
     paginationStyle,
+    paginationPlacement = 'bottom',
+    paginationInset = 0,
     arrowsStyle,
     accessibilityLabel = 'Carousel',
     paginationLabel = 'Carousel pages',
@@ -187,6 +193,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     testID,
   } = props;
 
+  const resolvedBleed = Number.isFinite(bleed) ? Math.max(0, bleed) : 0;
   const isVirtualized = data !== undefined;
   const childSlides = useMemo(
     () => (isVirtualized ? [] : Children.toArray(children)),
@@ -329,6 +336,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
   const handleTick = useCallback(() => navigate(1, undefined, true, 'autoplay'), [navigate]);
   const { isPlaying, play, pause } = useAutoPlay({
     enabled: autoPlay,
+    reducedMotion,
     interval,
     isDragging,
     onTick: handleTick,
@@ -451,8 +459,11 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
   // biome-ignore lint/correctness/useExhaustiveDependencies: rtl is a genuine input
   const offsets = useMemo(() => snapOffsets(geometry, rtl), [geometry, rtl]);
   const contentContainerStyle = useMemo(
-    () => ({ paddingHorizontal: resolvedPeek }),
-    [resolvedPeek],
+    () =>
+      slideHeight === 'fill'
+        ? { paddingHorizontal: resolvedPeek, ...styles.fillContent }
+        : { paddingHorizontal: resolvedPeek },
+    [resolvedPeek, slideHeight],
   );
 
   const slideWrapperStyle = useCallback(
@@ -461,10 +472,11 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
         width: slideWidth,
         marginEnd: renderedIndex < geometry.renderedSlideCount - 1 ? spacing : 0,
       },
+      slideHeight === 'fill' ? styles.fillSlide : null,
       webSnapSlide(renderedIndex % visible === 0),
       slideStyle,
     ],
-    [slideWidth, spacing, geometry.renderedSlideCount, visible, slideStyle],
+    [slideWidth, spacing, geometry.renderedSlideCount, visible, slideStyle, slideHeight],
   );
 
   const activeRange = useMemo(
@@ -677,11 +689,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
       <View
         {...webGroup}
         accessibilityLabel={paginationLabel}
-        style={[
-          paginationPosition === 'overlay' ? styles.overlay : null,
-          styles.paginationRow,
-          paginationStyle,
-        ]}
+        style={[styles.paginationRow, paginationPosition === 'overlay' ? null : paginationStyle]}
         pointerEvents="box-none"
       >
         {Array.from({ length: pageCount }, (_, index) => (
@@ -697,6 +705,35 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
             accessibilityLabel={pageLabel(index, pageCount)}
           />
         ))}
+      </View>
+    );
+  }
+
+  if (paginationNode && paginationPosition === 'overlay') {
+    const insets =
+      typeof paginationInset === 'number'
+        ? {
+            top: paginationInset,
+            bottom: paginationInset,
+            left: paginationInset,
+            right: paginationInset,
+          }
+        : paginationInset;
+    // Anchor only one vertical edge so the pagination keeps its own height.
+    // This wrapper also positions custom Pagination slots consistently.
+    const overlayStyle: ViewStyle = {
+      position: 'absolute',
+      left: insets.left ?? 0,
+      right: insets.right ?? 0,
+      [paginationPlacement]: insets[paginationPlacement] ?? 0,
+    };
+    paginationNode = (
+      <View
+        pointerEvents="box-none"
+        testID={testID === undefined ? undefined : `${testID}-pagination`}
+        style={[overlayStyle, paginationStyle]}
+      >
+        {paginationNode}
       </View>
     );
   }
@@ -728,7 +765,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
       <View
         {...webGroup}
         style={[styles.root, style]}
-        onLayout={onLayout}
+        onLayout={resolvedBleed === 0 ? onLayout : undefined}
         accessibilityLabel={accessibilityLabel}
         testID={testID}
       >
@@ -736,7 +773,14 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
         {at('above')(paginationNode, paginationPosition)}
         {at('above')(playPauseNode, playPausePosition)}
 
-        <View style={styles.trackWrapper}>
+        <View
+          style={[
+            styles.trackWrapper,
+            { marginHorizontal: resolvedBleed > 0 ? -resolvedBleed : 0 },
+          ]}
+          onLayout={resolvedBleed > 0 ? onLayout : undefined}
+          testID={testID === undefined ? 'carousel-track-wrapper' : `${testID}-track-wrapper`}
+        >
           <SlideStoreProvider value={slideStore}>{track}</SlideStoreProvider>
           {at('overlay')(arrowsNode, arrowsPosition)}
           {at('overlay')(paginationNode, paginationPosition)}

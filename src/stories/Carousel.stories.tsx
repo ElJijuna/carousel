@@ -5,7 +5,8 @@ import { fn } from 'storybook/test';
 
 import { Carousel } from '../Carousel';
 import { useCarousel } from '../CarouselContext';
-import type { CarouselHandle, CarouselPaginationSlotProps } from '../types';
+import { DefaultDot } from '../DefaultDot';
+import type { CarouselDotSlotProps, CarouselHandle, CarouselPaginationSlotProps } from '../types';
 import {
   MockArrow,
   MockCreditCard,
@@ -889,4 +890,62 @@ export const Gallery: Story = {
       </View>
     );
   },
+};
+
+/** Slides fill the bounded track in both rendering modes, without measuring height. */
+export const FillHeight: Story = {
+  args: { slideHeight: 'fill', components: { Dot: MockDot } },
+  render: (args) => (
+    <View>
+      <View style={{ height: 300 }}>
+        <Carousel {...args} testID="fill-children" style={{ flex: 1 }}>
+          <View testID="fill-child" style={{ flex: 1, backgroundColor: palette.accent }} />
+          <View style={{ flex: 1, backgroundColor: palette.ink }} />
+        </Carousel>
+      </View>
+      <View style={{ height: 300 }}>
+        <Carousel
+          {...args}
+          testID="fill-data"
+          style={{ flex: 1 }}
+          data={[palette.accent, palette.ink]}
+          renderItem={({ item, index }) => (
+            <View testID={`fill-item-${index}`} style={{ flex: 1, backgroundColor: item }} />
+          )}
+        />
+      </View>
+    </View>
+  ),
+};
+
+/** Overlay pagination anchors to one edge and respects supplied safe-area insets. */
+export const OverlayPagination: Story = {
+  args: {
+    testID: 'carousel',
+    style: { height: 300 },
+    slots: { pagination: 'overlay' },
+    paginationPlacement: 'top',
+    paginationInset: { top: 44, bottom: 34, left: 10, right: 20 },
+    components: { Dot: MockDot },
+    children: mockSlides(3),
+  },
+};
+
+const LineIndicator = (props: CarouselDotSlotProps) => (
+  <DefaultDot
+    {...props}
+    style={{ width: 24, height: 3, borderRadius: 2 }}
+    selectedStyle={{ width: 36, backgroundColor: palette.accent }}
+  />
+);
+
+/** Optional built-in indicators: the same accessible button, two visual styles. */
+export const DefaultIndicators: Story = {
+  args: { testID: 'carousel', components: { Dot: DefaultDot }, children: mockSlides(3) },
+  render: (args) => (
+    <View>
+      <Carousel {...args} />
+      <Carousel {...args} testID="lines" components={{ Dot: LineIndicator }} />
+    </View>
+  ),
 };

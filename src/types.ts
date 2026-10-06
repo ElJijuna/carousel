@@ -370,6 +370,21 @@ export interface CarouselProps<TItem = unknown> {
    */
   peek?: ResponsiveValue<number>;
   /**
+   * Extend the track beyond each horizontal edge of the root, in dp.
+   * Use the parent horizontal padding to reach its edges. Above/below slots
+   * stay aligned with the root. Peek and breakpoints use the expanded width.
+   * Negative and non-finite values are treated as zero.
+   * @default 0
+   */
+  bleed?: number;
+  /**
+   * Stretch slide wrappers to the track's available height. The carousel must
+   * have a bounded height (an explicit height or flex within a bounded parent).
+   * Slide content can use flex: 1 to fill its wrapper. slideStyle can override
+   * the stretch alignment. Omit to keep content-driven slide sizing.
+   */
+  slideHeight?: 'fill';
+  /**
    * Gap between slides in dp.
    * @default 0
    */
@@ -430,6 +445,9 @@ export interface CarouselProps<TItem = unknown> {
    * Advance automatically. Pauses while the user drags and while the app is
    * backgrounded.
    *
+   * Paused while the OS reduced-motion setting is enabled. Turning that
+   * setting off resumes rotation unless the user manually paused it.
+   *
    * WCAG 2.2.2 requires a way to stop content that moves on its own, so render
    * a `PlayPauseControl` slot (or your own control via {@link useCarousel})
    * whenever this is on.
@@ -447,6 +465,19 @@ export interface CarouselProps<TItem = unknown> {
   components?: CarouselComponents;
   /** Where each slot is placed. See {@link CarouselSlotLayout}. */
   slots?: CarouselSlotLayout;
+  /**
+   * Edge for overlaid pagination. Only applies to slots.pagination='overlay'.
+   * @default 'bottom'
+   */
+  paginationPlacement?: 'top' | 'bottom';
+  /**
+   * Offsets in dp for overlaid pagination, measured from the track edges.
+   * A number applies to every edge; an object can supply safe-area insets.
+   * Only the chosen vertical edge and left/right are used. Missing edges are 0.
+   * Insets are supplied by the consumer; safe areas are not read automatically.
+   * @default 0
+   */
+  paginationInset?: number | Partial<Record<'top' | 'bottom' | 'left' | 'right', number>>;
 
   // ── Styling ──
   /** Style for the outermost wrapper. */

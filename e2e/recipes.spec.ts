@@ -294,3 +294,80 @@ test.describe('gallery', () => {
     await expect.poll(() => stripOffset(page)).toBeGreaterThan(0);
   });
 });
+
+test('fill-height slides follow the track height in both modes and after resize', async ({
+  page,
+}) => {
+  await page.goto('/iframe.html?id=carousel--fill-height&viewMode=story');
+  await expect(page.getByTestId('fill-children-track')).toBeVisible();
+  await expect(page.getByTestId('fill-data-track')).toBeVisible();
+  for (const height of [300, 420]) {
+    await page.evaluate((nextHeight) => {
+      for (const id of ['fill-children', 'fill-data']) {
+        const parent = document.querySelector(`[data-testid="${id}"]`)?.parentElement;
+        if (parent) {
+          parent.style.height = `${nextHeight}px`;
+        }
+      }
+    }, height);
+    for (const [mode, slideId] of [
+      ['children', 'fill-child'],
+      ['data', 'fill-item-0'],
+    ] as const) {
+      await expect
+        .poll(async () => {
+          const track = await page.getByTestId(`fill-${mode}-track`).boundingBox();
+          const slide = await page.getByTestId(slideId).boundingBox();
+          return track && slide ? Math.abs(track.height - slide.height) : Number.POSITIVE_INFINITY;
+        })
+        .toBeLessThanOrEqual(1);
+      const slide = await page.getByTestId(slideId).boundingBox();
+      expect(slide?.height).toBeGreaterThan(height - 60);
+    }
+  }
+});
+
+for (const placement of ['top', 'bottom'] as const) {
+  test(`overlay pagination respects ${placement} and horizontal safe-area insets`, async ({
+    page,
+  }) => {
+    await openStory(page, 'overlay-pagination', `paginationPlacement:${placement}`);
+    const track = await page.getByTestId('carousel-track').boundingBox();
+    const pagination = await page.getByTestId('carousel-pagination').boundingBox();
+    expect(track).not.toBeNull();
+    expect(pagination).not.toBeNull();
+    if (!track || !pagination) {
+      throw new Error('Missing track or pagination layout');
+    }
+    expect(pagination.x - track.x).toBeCloseTo(10, 0);
+    expect(track.x + track.width - pagination.x - pagination.width).toBeCloseTo(20, 0);
+    if (placement === 'top') {
+      expect(pagination.y - track.y).toBeCloseTo(44, 0);
+    } else {
+      expect(track.y + track.height - pagination.y - pagination.height).toBeCloseTo(34, 0);
+    }
+    expect(pagination.height).toBeLessThan(60);
+    await page.getByTestId('dot-1').click();
+    await expectSelectedPage(page, 1);
+  });
+}
+
+test('DefaultDot supports keyboard activation and current-page semantics in both styles', async ({
+  page,
+}) => {
+  await openStory(page, 'default-indicators');
+  for (const id of ['carousel', 'lines']) {
+    const carousel = page.getByTestId(id);
+    const second = carousel.getByRole('button', { name: 'Page 2', exact: true });
+    const box = await second.boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(44);
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+    await second.focus();
+    await second.press('Enter');
+    await expect(second).toHaveAttribute('aria-current', 'page');
+    await expect(second).not.toHaveAttribute('aria-selected');
+    await expect(carousel.getByRole('button', { name: 'Page 1', exact: true })).not.toHaveAttribute(
+      'aria-current',
+    );
+  }
+});

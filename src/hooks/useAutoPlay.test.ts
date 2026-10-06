@@ -196,3 +196,53 @@ it('stops ticking after unmount', async () => {
 
   expect(onTick).not.toHaveBeenCalled();
 });
+
+it('does not tick or report playing with reduced motion, even after play()', async () => {
+  const { result, onTick } = await setup({ reducedMotion: true });
+  expect(result.current.isPlaying).toBe(false);
+  await act(async () => {
+    result.current.play();
+  });
+  await act(async () => {
+    jest.advanceTimersByTime(5000);
+  });
+  expect(onTick).not.toHaveBeenCalled();
+  expect(result.current.isPlaying).toBe(false);
+});
+
+it('suspends rotation on a preference change and resumes with a fresh interval', async () => {
+  const { result, onTick, rerender, initialProps } = await setup();
+  await act(async () => {
+    jest.advanceTimersByTime(500);
+  });
+  await rerender({ ...initialProps, reducedMotion: true });
+  expect(result.current.isPlaying).toBe(false);
+  await act(async () => {
+    jest.advanceTimersByTime(5000);
+  });
+  expect(onTick).not.toHaveBeenCalled();
+  await rerender({ ...initialProps, reducedMotion: false });
+  expect(result.current.isPlaying).toBe(true);
+  await act(async () => {
+    jest.advanceTimersByTime(999);
+  });
+  expect(onTick).not.toHaveBeenCalled();
+  await act(async () => {
+    jest.advanceTimersByTime(1);
+  });
+  expect(onTick).toHaveBeenCalledTimes(1);
+});
+
+it('preserves a manual pause when reduced motion is turned off', async () => {
+  const { result, onTick, rerender, initialProps } = await setup();
+  await act(async () => {
+    result.current.pause();
+  });
+  await rerender({ ...initialProps, reducedMotion: true });
+  await rerender({ ...initialProps, reducedMotion: false });
+  expect(result.current.isPlaying).toBe(false);
+  await act(async () => {
+    jest.advanceTimersByTime(5000);
+  });
+  expect(onTick).not.toHaveBeenCalled();
+});

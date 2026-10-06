@@ -12,6 +12,7 @@
 export { Carousel } from './Carousel';
 export { useCarousel, useCarouselOptional } from './CarouselContext';
 export { useCarouselSlide } from './CarouselSlideContext';
+export { DefaultDot, type DefaultDotProps } from './DefaultDot';
 export type {
   CarouselActions,
   CarouselArrowSlotProps,
