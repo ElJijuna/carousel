@@ -491,6 +491,13 @@ down — migrate to `useCarouselSlide` when you don't need that.
 one page of active** — that's the cost of building a live animation from it, and it's scoped to the
 slides near the viewport; one more than a page away is pinned at `±1` and stops re-rendering.
 
+Storybook includes three examples using the same cards and controls: **Scale** shrinks neighbours
+to 90%, **Fade** lowers their opacity to 0.35 while the track still scrolls, and **Parallax** moves
+clipped, oversized artwork against the track by up to 12% of the card width. Their effects follow
+`progress` during a partial swipe and turn off with the OS reduced-motion preference. These are
+story-only recipes, with no new carousel props or animation dependencies. **Coverflow** remains
+the example that combines scale and fading artwork.
+
 ---
 
 ## Page state
