@@ -665,6 +665,10 @@ Both wrap around past the ends; they differ in how they get there.
   copy of the first after the last), so paging past either end keeps moving in the same direction.
   Once the scroll settles the carousel silently re-anchors onto the real page. Implies `loop`.
 
+Without `infinite`, dragging past either physical end stops at the edge: iOS bounce and Android
+overscroll effects are disabled, and web suppresses horizontal overscroll where supported.
+This also applies to `loop`, whose controls can still wrap. The margin set by `peek` is preserved.
+
 ```tsx
 <Carousel infinite visibleSlides={2} spacing={12} peek={32} components={{ Arrow, Dot }}>
   {cards}

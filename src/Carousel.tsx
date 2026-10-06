@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
  * free drag in a browser coasts to rest between pages.
  */
 const IS_WEB = Platform.OS === 'web';
-const webSnapContainer = (peek: number): ViewStyle | null =>
+const webSnapContainer = (peek: number, infinite: boolean): ViewStyle | null =>
   IS_WEB
     ? ({
         scrollSnapType: 'x mandatory',
@@ -118,6 +118,7 @@ const webSnapContainer = (peek: number): ViewStyle | null =>
         // from the container's.
         scrollPaddingLeft: peek,
         scrollPaddingRight: peek,
+        ...(!infinite ? { overscrollBehaviorX: 'none' } : {}),
       } as ViewStyle)
     : null;
 /** Only page boundaries are snap points — not every slide within a page. */
@@ -515,6 +516,10 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
   const scrollerProps = {
     horizontal: true as const,
     showsHorizontalScrollIndicator: false,
+    // Finite tracks stop at their physical edges, even when buttons can loop.
+    ...(!infinite
+      ? { bounces: false, alwaysBounceHorizontal: false, overScrollMode: 'never' as const }
+      : {}),
     // Snap points rather than `pagingEnabled`: paging snaps to whole viewport
     // widths, which breaks `visibleSlides`, `peek` and `spacing` at once.
     snapToOffsets: offsets.length > 0 ? offsets : undefined,
@@ -523,7 +528,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     disableIntervalMomentum: true,
     scrollEventThrottle: 16,
     contentContainerStyle,
-    style: [styles.track, webSnapContainer(resolvedPeek), trackStyle],
+    style: [styles.track, webSnapContainer(resolvedPeek, infinite), trackStyle],
     testID: testID === undefined ? undefined : `${testID}-track`,
     onScroll: bridge.onScroll,
     onMomentumScrollBegin: bridge.onMomentumScrollBegin,
