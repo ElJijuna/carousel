@@ -1,6 +1,35 @@
 import { expect, test } from '@playwright/test';
 
-import { expectSelectedPage, openStory, restingOffset, scrollLeft } from './helpers';
+import {
+  expectSelectedPage,
+  openStory,
+  restingOffset,
+  scrollBy,
+  scrollLeft,
+  track,
+} from './helpers';
+
+test.describe('edge overscroll', () => {
+  for (const loop of [false, true]) {
+    test(`finite track stays at its physical edges (loop=${loop})`, async ({ page }) => {
+      await openStory(page, 'basic', `loop:${loop};infinite:false;peek:0`);
+      await expect(track(page)).toHaveCSS('overscroll-behavior-x', 'none');
+      expect(await scrollBy(page, -1000)).toBe(0);
+      await track(page).focus();
+      await page.keyboard.press('End');
+      const end = await restingOffset(page);
+      expect(end).toBeGreaterThan(0);
+      expect(await scrollBy(page, 1000)).toBe(end);
+      await page.keyboard.press('ArrowLeft');
+      expect(await restingOffset(page)).toBeLessThan(end);
+    });
+  }
+
+  test('infinite retains the default overscroll style', async ({ page }) => {
+    await openStory(page, 'infinite');
+    await expect(track(page)).toHaveCSS('overscroll-behavior-x', 'auto');
+  });
+});
 
 test.describe('infinite', () => {
   test('starts past the leading clone', async ({ page }) => {

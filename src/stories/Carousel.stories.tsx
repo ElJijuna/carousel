@@ -23,6 +23,7 @@ import {
   mockCalendarMonth,
   mockCards,
   mockCoverSlides,
+  mockCovers,
   mockData,
   mockDays,
   mockDefaultDayId,
@@ -32,6 +33,7 @@ import {
   mockSlides,
   palette,
 } from './mocks';
+import { TransitionSlide } from './TransitionSlide';
 
 const styles = StyleSheet.create({
   row: {
@@ -809,6 +811,53 @@ export const Coverflow: Story = {
     accessibilityLabel: 'Albums',
     slideLabel: (index: number, total: number) => `Album ${index + 1} of ${total}`,
     children: mockCoverSlides(),
+  },
+};
+
+const transitionArgs = {
+  testID: 'carousel',
+  visibleSlides: 1,
+  spacing: 16,
+  peek: { base: 96, 560: 56, 420: 32 },
+  autoPlay: false,
+  loop: false,
+  infinite: false,
+  components: { Arrow: MockArrow, Dot: MockDot },
+  slots: { arrows: 'below' as const },
+  slideStyle: { paddingVertical: 20 },
+  accessibilityLabel: 'Transition comparison',
+};
+
+/** Scale alone: full size at the centre, 90% one page away. */
+export const Scale: Story = {
+  argTypes: { peek: { control: 'object' } },
+  args: {
+    ...transitionArgs,
+    children: mockCovers.map((cover, index) => (
+      <TransitionSlide key={cover.id} cover={cover} index={index} effect="scale" />
+    )),
+  },
+};
+
+/** Opacity alone: 1 at the centre, 0.35 one page away; the track still scrolls. */
+export const Fade: Story = {
+  argTypes: { peek: { control: 'object' } },
+  args: {
+    ...transitionArgs,
+    children: mockCovers.map((cover, index) => (
+      <TransitionSlide key={cover.id} cover={cover} index={index} effect="fade" />
+    )),
+  },
+};
+
+/** Counter-moving artwork, clipped and overscanned; titles stay with the track. */
+export const Parallax: Story = {
+  argTypes: { peek: { control: 'object' } },
+  args: {
+    ...transitionArgs,
+    children: mockCovers.map((cover, index) => (
+      <TransitionSlide key={cover.id} cover={cover} index={index} effect="parallax" />
+    )),
   },
 };
 

@@ -87,6 +87,31 @@ const settleAt = async (x: number, testID = 'c-track') => {
 // ─── Rendering ────────────────────────────────────────────────────────────────
 
 describe('rendering', () => {
+  describe.each([false, true])('edge overscroll (data=%s)', (dataMode) => {
+    it.each([
+      { loop: false, infinite: false },
+      { loop: true, infinite: false },
+      { loop: false, infinite: true },
+    ])('configures the track for %o and preserves peek', async (options) => {
+      await render(
+        <Carousel
+          testID="c"
+          {...options}
+          peek={24}
+          {...(dataMode
+            ? { data: [0, 1, 2], renderItem: ({ item }: { item: number }) => <Text>{item}</Text> }
+            : { children: slides(3) })}
+        />,
+      );
+      await layout();
+      const track = screen.getByTestId('c-track');
+      expect(track.props.bounces).toBe(options.infinite ? undefined : false);
+      expect(track.props.alwaysBounceHorizontal).toBe(options.infinite ? undefined : false);
+      expect(track.props.overScrollMode).toBe(options.infinite ? undefined : 'never');
+      expect(track.props.contentContainerStyle.paddingHorizontal).toBe(24);
+    });
+  });
+
   it('renders children as slides', async () => {
     await render(<Carousel testID="c">{slides(3)}</Carousel>);
     await layout();

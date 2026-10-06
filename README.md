@@ -491,6 +491,13 @@ down — migrate to `useCarouselSlide` when you don't need that.
 one page of active** — that's the cost of building a live animation from it, and it's scoped to the
 slides near the viewport; one more than a page away is pinned at `±1` and stops re-rendering.
 
+Storybook includes three examples using the same cards and controls: **Scale** shrinks neighbours
+to 90%, **Fade** lowers their opacity to 0.35 while the track still scrolls, and **Parallax** moves
+clipped, oversized artwork against the track by up to 12% of the card width. Their effects follow
+`progress` during a partial swipe and turn off with the OS reduced-motion preference. These are
+story-only recipes, with no new carousel props or animation dependencies. **Coverflow** remains
+the example that combines scale and fading artwork.
+
 ---
 
 ## Page state
@@ -657,6 +664,10 @@ Both wrap around past the ends; they differ in how they get there.
 - **`infinite`** is seamless: a copy of the last page is rendered *before* the first one (and a
   copy of the first after the last), so paging past either end keeps moving in the same direction.
   Once the scroll settles the carousel silently re-anchors onto the real page. Implies `loop`.
+
+Without `infinite`, dragging past either physical end stops at the edge: iOS bounce and Android
+overscroll effects are disabled, and web suppresses horizontal overscroll where supported.
+This also applies to `loop`, whose controls can still wrap. The margin set by `peek` is preserved.
 
 ```tsx
 <Carousel infinite visibleSlides={2} spacing={12} peek={32} components={{ Arrow, Dot }}>
