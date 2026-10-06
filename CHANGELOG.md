@@ -1,3 +1,10 @@
+## [0.7.0](https://github.com/ElJijuna/carousel/compare/v0.6.0...v0.7.0) (2026-10-06)
+
+### Features
+
+* add transition effects (scale, fade, parallax) with corresponding tests and Storybook examples ([33f7001](https://github.com/ElJijuna/carousel/commit/33f7001fb89b1f6bee78d85863b659d1fb6ae26a))
+* enhance overscroll behavior for finite and infinite carousel tracks ([df2bbe5](https://github.com/ElJijuna/carousel/commit/df2bbe5394cf87da6cc7cb38f5e6680cd727d85d))
+
 ## [0.6.0](https://github.com/ElJijuna/carousel/compare/v0.5.0...v0.6.0) (2026-10-06)
 
 ### Features
