@@ -1,3 +1,13 @@
+## [1.2.0](https://github.com/ElJijuna/carousel/compare/v1.1.0...v1.2.0) (2026-10-10)
+
+### Features
+
+* add tap-to-flip functionality for card mode and update related tests ([e6b39ee](https://github.com/ElJijuna/carousel/commit/e6b39eed0d3c4038479c6092d70b92ac29bcaac7))
+
+### Bug Fixes
+
+* add test for upright face handling during animation and improve CardTrack logic ([9deab31](https://github.com/ElJijuna/carousel/commit/9deab31398c74558223e0e711026d7b13091f498))
+
 ## [1.1.0](https://github.com/ElJijuna/carousel/compare/v1.0.0...v1.1.0) (2026-10-10)
 
 ### Features
