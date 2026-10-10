@@ -301,6 +301,18 @@ it('clamps a shrinking deck and cancels pending work on unmount', async () => {
   expect(ref.current).toBeNull();
 });
 
+it('animates the flip on the JS driver', async () => {
+  // Native-driven faces end up at ±180° on iOS (hidden backface) once they stop animating.
+  await setup();
+  await act(async () => {
+    ref.current?.next();
+  });
+  expect(Animated.timing).toHaveBeenCalledWith(
+    expect.any(Animated.Value),
+    expect.objectContaining({ useNativeDriver: false }),
+  );
+});
+
 it('switches without animation for reduced motion', async () => {
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
   await setup();

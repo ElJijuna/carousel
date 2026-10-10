@@ -29,6 +29,30 @@ for (const story of looks) {
 
     await expect(page).toHaveScreenshot(`${story}.png`, {
       // Rules out a caret or an in-flight transition being the difference.
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+    });
+  });
+}
+
+for (const story of [
+  'responsive',
+  'card',
+  'auto-play-progress',
+  'custom-auto-play-progress',
+  'gallery',
+  'day-calendar',
+  'page-layout',
+  'overlay-pagination',
+] as const) {
+  test(`${story} phone catalog`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openStory(page, story);
+    await page.waitForTimeout(500);
+    await expect(page).toHaveScreenshot(`${story}-phone.png`, {
+      fullPage: true,
       animations: 'disabled',
       caret: 'hide',
     });

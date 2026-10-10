@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { type CatalogStory, storyId } from '../src/stories/catalog';
 
 /**
  * Shared helpers for the e2e suite.
@@ -21,7 +22,7 @@ const TRACK = '[data-testid="carousel-track"]';
  */
 export async function openStory(page: Page, id: string, args?: string): Promise<void> {
   const query = args === undefined ? '' : `&args=${args}`;
-  await page.goto(`/iframe.html?id=carousel--${id}&viewMode=story${query}`);
+  await page.goto(`/iframe.html?id=${storyId(id as CatalogStory)}&viewMode=story${query}`);
   await expect(track(page)).toBeVisible();
   // The carousel measures itself with `onLayout`, so nothing is positioned
   // until a real width has arrived and the content has been sized against it.

@@ -9,7 +9,15 @@
  * @module
  */
 import type { ReactNode } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Image,
+  Pressable,
+  type StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { useCarouselSlide } from '../CarouselSlideContext';
 import type {
   CarouselArrowSlotProps,
@@ -18,22 +26,23 @@ import type {
   CarouselPlayPauseSlotProps,
 } from '../types';
 import { mockImageLabels, mockImages } from './mockImages';
+import { demoTokens } from './tokens';
 
 /** Shared colours for the mocked chrome, so the stories stay literal-free. */
 export const palette = {
-  ink: '#111827',
-  muted: '#9ca3af',
-  surface: '#ffffff',
-  accent: '#2563eb',
-  slideBg: '#e0e7ff',
-  slideBorder: '#c7d2fe',
-  caption: '#4b5563',
-  track: '#e5e7eb',
+  ink: demoTokens.color.ink,
+  muted: demoTokens.color.muted,
+  surface: demoTokens.color.surface,
+  accent: demoTokens.color.accent,
+  slideBg: demoTokens.color.soft,
+  slideBorder: demoTokens.color.border,
+  caption: demoTokens.color.caption,
+  track: demoTokens.color.border,
   shadow: '#000000',
   cardInk: '#f8fafc',
   cardChip: '#e2c275',
-  splitBorder: '#e5e7eb',
-  splitEyebrow: '#2563eb',
+  splitBorder: demoTokens.color.border,
+  splitEyebrow: demoTokens.color.accent,
   // The day strip is the one dark surface in this Storybook, so it carries its
   // own ramp rather than inverting the light one above.
   calendarBg: '#0f0f11',
@@ -56,18 +65,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: palette.surface,
     marginHorizontal: 8,
+    borderWidth: 1,
+    borderColor: palette.track,
     shadowColor: palette.shadow,
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.06,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
   arrowDisabled: { opacity: 0.35 },
+  pressed: { opacity: 0.7 },
   arrowGlyph: { fontSize: 18, color: palette.ink, lineHeight: 20 },
 
   dot: {
-    width: 24,
-    height: 24,
+    width: 32,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -77,7 +89,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: palette.muted,
   },
-  dotSelected: { backgroundColor: palette.accent, width: 20 },
+  dotSelected: { backgroundColor: palette.accent, width: 24 },
 
   fraction: {
     paddingVertical: 6,
@@ -94,6 +106,10 @@ const styles = StyleSheet.create({
 
   playPause: {
     margin: 12,
+    minHeight: 44,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: palette.track,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 999,
@@ -103,7 +119,7 @@ const styles = StyleSheet.create({
 
   slide: {
     height: 160,
-    borderRadius: 12,
+    borderRadius: demoTokens.radius.medium,
     borderWidth: 1,
     borderColor: palette.slideBorder,
     backgroundColor: palette.slideBg,
@@ -115,7 +131,7 @@ const styles = StyleSheet.create({
 
   card: {
     height: 190,
-    borderRadius: 16,
+    borderRadius: demoTokens.radius.large,
     padding: 20,
     justifyContent: 'space-between',
     shadowColor: palette.shadow,
@@ -162,7 +178,7 @@ const styles = StyleSheet.create({
   split: {
     flexDirection: 'row',
     height: 220,
-    borderRadius: 12,
+    borderRadius: demoTokens.radius.medium,
     borderWidth: 1,
     borderColor: palette.splitBorder,
     backgroundColor: palette.surface,
@@ -283,7 +299,7 @@ const styles = StyleSheet.create({
 
   cover: {
     height: 260,
-    borderRadius: 16,
+    borderRadius: demoTokens.radius.large,
     borderWidth: 1,
     borderColor: palette.splitBorder,
     backgroundColor: palette.surface,
@@ -359,7 +375,11 @@ export const MockArrow = ({
     // finger pressing it takes the user's place in the deck with it.
     accessibilityState={{ disabled }}
     onPress={disabled ? undefined : onPress}
-    style={[styles.arrow, disabled && styles.arrowDisabled]}
+    style={({ pressed }) => [
+      styles.arrow,
+      disabled && styles.arrowDisabled,
+      pressed && styles.pressed,
+    ]}
   >
     <Text
       testID={`arrow-${direction}-${disabled ? 'disabled' : 'enabled'}`}
@@ -378,7 +398,7 @@ export const MockDot = ({ index, selected, onPress, accessibilityLabel }: Carous
     accessibilityLabel={accessibilityLabel}
     accessibilityState={{ selected }}
     onPress={onPress}
-    style={styles.dot}
+    style={({ pressed }) => [styles.dot, pressed && styles.pressed]}
   >
     {/*
       `accessibilityState` is the right API for real screen readers, but
@@ -415,17 +435,26 @@ export const MockPlayPause = ({
     accessibilityRole="button"
     accessibilityLabel={accessibilityLabel}
     onPress={onPress}
-    style={styles.playPause}
+    style={({ pressed }) => [styles.playPause, pressed && styles.pressed]}
   >
     <Text style={styles.playPauseText}>{isPlaying ? '❚❚ Pause' : '▶ Play'}</Text>
   </Pressable>
 );
 
 /** A stand-in slide, so the stories have something to page through. */
-export const MockSlide = ({ index, caption }: { index: number; caption?: ReactNode }) => (
-  <View style={styles.slide} testID={`slide-${index}`}>
-    <Text style={styles.slideTitle}>{index + 1}</Text>
-    {caption ? <Text style={styles.slideCaption}>{caption}</Text> : null}
+export const MockSlide = ({
+  index,
+  caption,
+  style,
+}: {
+  index: number;
+  caption?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) => (
+  <View style={[styles.slide, style]} testID={`slide-${index}`}>
+    <Text style={styles.slideCaption}>{`COLLECTION / ${String(index + 1).padStart(2, '0')}`}</Text>
+    <Text style={styles.slideTitle}>{['Explore', 'Discover', 'Create', 'Connect'][index % 4]}</Text>
+    <Text style={styles.slideCaption}>{caption ?? 'A little room for your next idea.'}</Text>
   </View>
 );
 

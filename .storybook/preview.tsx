@@ -1,7 +1,9 @@
 import type { Preview } from '@storybook/react';
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { RESPONSIVE_VIEWPORT_VALUE, type Viewport } from 'storybook/viewport';
+import type { catalog } from '../src/stories/catalog';
+import { demoTokens } from '../src/stories/tokens';
 
 /**
  * The devices the viewport toolbar offers.
@@ -53,30 +55,88 @@ const isDeviceWidth = (viewport: unknown): boolean => {
   return value !== undefined && value !== RESPONSIVE_VIEWPORT_VALUE;
 };
 
-const Frame = ({ children, deviceWidth }: { children: ReactNode; deviceWidth: boolean }) => (
-  // A definite width, so `visibleSlides` and `peek` have something real to
-  // divide up — a carousel in an unconstrained flex parent measures 0.
-  //
-  // The 720dp cap keeps a story from stretching across a monitor while the
-  // preview is responsive. Once the toolbar pins a device, the frame gives
-  // that width away instead: the point of picking Tablet is to see the
-  // carousel at a tablet's width, not at 720 inside one.
-  <View
-    style={[{ padding: 24, width: '100%', alignSelf: 'center' }, !deviceWidth && { maxWidth: 720 }]}
-  >
-    {children}
-  </View>
-);
+const frameStyles = StyleSheet.create({
+  canvas: { backgroundColor: demoTokens.color.canvas },
+  frame: { padding: 24, width: '100%', alignSelf: 'center', gap: 24 },
+  header: { gap: 8 },
+  eyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 2, color: demoTokens.color.accent },
+  title: { fontSize: 28, fontWeight: '700', color: demoTokens.color.ink },
+  description: { fontSize: 14, lineHeight: 21, color: demoTokens.color.caption },
+  surface: {
+    backgroundColor: demoTokens.color.surface,
+    borderRadius: demoTokens.radius.large,
+    paddingVertical: 24,
+  },
+  instruction: {
+    gap: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: demoTokens.color.accent,
+    paddingLeft: 16,
+  },
+  instructionLabel: { fontSize: 12, fontWeight: '700', color: demoTokens.color.ink },
+});
+
+type CatalogEntry = (typeof catalog)[keyof typeof catalog];
+
+const Frame = ({
+  children,
+  deviceWidth,
+  standalone,
+  entry,
+}: {
+  children: ReactNode;
+  deviceWidth: boolean;
+  standalone: boolean;
+  entry?: CatalogEntry;
+}) => {
+  // Standalone canvases fill the viewport minus Storybook's 16px outer padding.
+  // Docs previews keep their natural height so examples remain easy to scan.
+  const { height } = useWindowDimensions();
+  return (
+    <View style={[frameStyles.canvas, standalone && { minHeight: Math.max(0, height - 32) }]}>
+      <View style={[frameStyles.frame, !deviceWidth && { maxWidth: 720 }]}>
+        {entry ? (
+          <View style={frameStyles.header}>
+            <Text style={frameStyles.eyebrow}>{`CAROUSEL / ${entry.group.toUpperCase()}`}</Text>
+            <Text accessibilityRole="header" style={frameStyles.title}>
+              {entry.title}
+            </Text>
+            <Text style={frameStyles.description}>{entry.description}</Text>
+          </View>
+        ) : null}
+        <View style={frameStyles.surface}>{children}</View>
+        {entry ? (
+          <View style={frameStyles.instruction}>
+            <Text style={frameStyles.instructionLabel}>Try it</Text>
+            <Text style={frameStyles.description}>{entry.instruction}</Text>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+};
 
 const preview: Preview = {
   parameters: {
+    options: {
+      storySort: {
+        order: [
+          'Carousel',
+          ['Fundamentals', 'Navigation', 'Autoplay', 'Indicators', 'Transitions', 'Recipes'],
+        ],
+      },
+    },
     controls: { matchers: { color: /(background|color)$/i } },
     a11y: { test: 'todo' },
     viewport: { options: viewports },
   },
   decorators: [
     (Story, context) => (
-      <Frame deviceWidth={isDeviceWidth(context.globals.viewport)}>
+      <Frame
+        standalone={context.viewMode === 'story'}
+        deviceWidth={isDeviceWidth(context.globals.viewport)}
+        entry={context.parameters.catalog}
+      >
         <Story />
       </Frame>
     ),

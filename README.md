@@ -25,6 +25,24 @@ A **headless**, dependency-free horizontal carousel for React Native, Expo and r
 **[▶ Live Storybook](https://eljijuna.github.io/carousel/)** — every story running on
 react-native-web, with the mocked chrome you can copy from `src/stories/mocks.tsx`.
 
+The catalog keeps all 29 examples in six sections. Each preview includes a short
+explanation and a **Try it** instruction. Shared controls and defaults live in
+`src/stories/storyMeta.ts`; demo tokens live in `src/stories/tokens.ts`.
+
+| Section | Main route (`?path=/story/…`) |
+| --- | --- |
+| Fundamentals | `carousel-fundamentals--basic` |
+| Navigation | `carousel-navigation--controlled` |
+| Autoplay | `carousel-autoplay--auto-play-progress` |
+| Indicators | `carousel-indicators--default-indicators` |
+| Transitions | `carousel-transitions--card` |
+| Recipes | `carousel-recipes--gallery` |
+
+These section routes replace the previous `carousel--…` IDs. Use the viewport
+toolbar for Phone, Tablet and desktop checks; the carousel keeps the available
+device width when a viewport is selected.
+
+
 ![Carousel with arrows and pagination](https://raw.githubusercontent.com/ElJijuna/carousel/main/assets/readme/carousel-arrows.png)
 
 The component owns every behaviour — measuring, paging, snapping, wrapping, auto-play,
@@ -1120,7 +1138,7 @@ step and no Xcode or Android Studio required.
 
 The app imports the library through its package name, which resolves to `src/index.ts` rather than
 to `lib/`: editing a source file reloads the running app with no build in between. The recipes in
-`example/recipes/` are the story bodies from `src/stories/Carousel.stories.tsx`, drawn with the
+`example/recipes/` are the story bodies from `src/stories/Recipes.stories.tsx`, drawn with the
 same mocked chrome via `example/chrome.ts` — two separate implementations would compare nothing,
 and comparing is the point.
 

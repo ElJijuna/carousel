@@ -298,7 +298,7 @@ test.describe('gallery', () => {
 test('fill-height slides follow the track height in both modes and after resize', async ({
   page,
 }) => {
-  await page.goto('/iframe.html?id=carousel--fill-height&viewMode=story');
+  await page.goto('/iframe.html?id=carousel-fundamentals--fill-height&viewMode=story');
   await expect(page.getByTestId('fill-children-track')).toBeVisible();
   await expect(page.getByTestId('fill-data-track')).toBeVisible();
   for (const height of [300, 420]) {
