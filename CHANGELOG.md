@@ -1,3 +1,13 @@
+## [1.1.0](https://github.com/ElJijuna/carousel/compare/v1.0.0...v1.1.0) (2026-10-10)
+
+### Features
+
+* implement autoplay functionality with shared clock for carousel indicators ([980b3af](https://github.com/ElJijuna/carousel/commit/980b3af9999faeb28db9b680a6a35bca41c50a98))
+
+### Refactoring
+
+* simplify ESLint configuration by using createEslintConfig ([d7378c5](https://github.com/ElJijuna/carousel/commit/d7378c50edb44fd8f0a3d9b3d5208957dc9c4b15))
+
 ## [1.0.0](https://github.com/ElJijuna/carousel/compare/v0.7.0...v1.0.0) (2026-10-10)
 
 ### ⚠ BREAKING CHANGES
