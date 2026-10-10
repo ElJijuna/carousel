@@ -153,6 +153,7 @@ const isCloneAt = (renderedIndex: number, geometry: Geometry, slideCount: number
 function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandle>): ReactElement {
   const {
     mode = 'classic',
+    flipTrigger = 'swipe',
     children,
     data,
     renderItem,
@@ -377,6 +378,8 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
   // Rotation always wraps, even without `loop`: a deck that silently stops on
   // the last slide reads as broken rather than finished.
   const handleTick = useCallback(() => navigate(1, undefined, true, 'autoplay'), [navigate]);
+  // A tap has no direction, so it always turns forward and wraps like rotation.
+  const handleCardPress = useCallback(() => navigate(1, undefined, true, 'press'), [navigate]);
   const { isPlaying, isRequested, autoPlayState, play, pause } = useAutoPlay({
     enabled: autoPlay,
     reducedMotion,
@@ -647,6 +650,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
         isVirtualized && keyExtractor ? keyExtractor(data[index] as TItem, index) : String(index)
       }
       transition={cardTransition}
+      onPress={flipTrigger === 'press' ? handleCardPress : undefined}
       slideCount={slideCount}
       slideLabel={slideLabel}
       fill={slideHeight === 'fill'}

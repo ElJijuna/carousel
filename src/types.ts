@@ -122,7 +122,9 @@ export type CarouselPageChangeSource =
   | 'previous'
   | 'pagination'
   | 'autoplay'
-  | 'imperative';
+  | 'imperative'
+  /** A tap on the card, with `mode="card"` and `flipTrigger="press"`. */
+  | 'press';
 
 /** Detail handed to {@link CarouselProps.onPageChanged} alongside the new page. */
 export interface CarouselPageChangeEvent {
@@ -363,6 +365,14 @@ export interface CarouselProps<TItem = unknown> {
    * @default 'classic'
    */
   mode?: 'classic' | 'card';
+  /**
+   * What flips a `mode="card"` deck. `swipe` follows the finger and turns past 25% of the width.
+   * `press` turns to the next card on a tap and wraps from the last card to the first, so a
+   * two-sided card toggles; swipes are ignored. Touchables inside a card keep their own presses.
+   * Screen readers keep using the pagination. Ignored in `classic` mode.
+   * @default 'swipe'
+   */
+  flipTrigger?: 'swipe' | 'press';
   // ── Slides ──
   /**
    * Slides as children. Every child is mounted at once, which is what you want

@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { createRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -7,6 +7,7 @@ import {
   PanResponder,
   type PanResponderCallbacks,
   type PanResponderGestureState,
+  Pressable,
   StyleSheet,
   Text,
 } from 'react-native';
@@ -352,6 +353,43 @@ it.each([
     { perspective: 1000 },
     { rotateY: '0deg' },
   ]);
+});
+
+it('flips forward on a tap with flipTrigger="press", wrapping and ignoring swipes', async () => {
+  const changed = jest.fn();
+  await setup({ flipTrigger: 'press', onPageChanged: changed });
+  const track = screen.getByTestId('c-track');
+  // No pan responder: a horizontal swipe is left to the screen.
+  expect(track.props.onMoveShouldSetResponder).toBeUndefined();
+  await fireEvent.press(track);
+  await finish();
+  expect(screen.getByText('Chart')).toBeTruthy();
+  expect(changed).toHaveBeenLastCalledWith(
+    1,
+    expect.objectContaining({ source: 'press', userInitiated: true }),
+  );
+  await fireEvent.press(track);
+  await finish();
+  await fireEvent.press(track);
+  await finish();
+  expect(screen.getByText('Summary')).toBeTruthy();
+  expect(changed.mock.calls.map(([page]) => page)).toEqual([1, 2, 0]);
+});
+
+it('keeps presses of touchables inside a card that flips on tap', async () => {
+  const action = jest.fn();
+  await setup({
+    flipTrigger: 'press',
+    renderItem: ({ item }) => (
+      <Pressable accessibilityRole="button" onPress={action}>
+        <Text>{String(item)}</Text>
+      </Pressable>
+    ),
+  });
+  await fireEvent.press(screen.getByRole('button', { name: 'Summary' }));
+  await finish();
+  expect(action).toHaveBeenCalledTimes(1);
+  expect(ref.current?.page).toBe(0);
 });
 
 it('hides the incoming face from interaction and accessibility before halfway', async () => {

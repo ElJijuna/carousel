@@ -191,6 +191,20 @@ changes the card directly. For consistent sizing, give cards the same height or
 use `slideHeight="fill"` in a bounded container. Content-driven decks retain the
 largest measured face height as cards are visited.
 
+To flip on a tap instead, pass `flipTrigger="press"`: each tap turns to the next
+card and wraps from the last to the first, so a two-sided card toggles. Swipes are
+ignored, which also leaves horizontal gestures to the screen (such as the iOS 26
+full-screen swipe back). Touchables inside a card keep their own presses, and
+`onPageChanged` reports the tap as `source: 'press'`. Screen readers keep turning
+the card through the pagination.
+
+```tsx
+<Carousel mode="card" flipTrigger="press">
+  <BalanceCard />
+  <HistoryChart />
+</Carousel>
+```
+
 | Prop | What it does |
 | --- | --- |
 | `visibleSlides` | How many slides fit in the viewport at once. Paging moves a whole group, so 6 slides at `visibleSlides={2}` give **3 pages**, not 6. |
@@ -585,6 +599,7 @@ the carousel never implements haptics; it just gives you enough to implement you
 | `'pagination'` | `goTo()` / `goToSlide()`, including the built-in `Dot` and `Pagination` slots and the keyboard Home/End keys. |
 | `'autoplay'` | An automatic `autoPlay` tick. |
 | `'imperative'` | A call through the `ref` (`CarouselHandle`), from outside the carousel's own chrome. |
+| `'press'` | A tap on the card, with `mode="card"` and `flipTrigger="press"`. |
 
 The second argument is purely additive — existing `onPageChanged={(page) => ...}` callbacks that
 only take the page keep working unchanged.
