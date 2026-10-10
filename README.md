@@ -172,6 +172,25 @@ which is exactly the re-render a virtualized list exists to avoid.
 
 ## Layout: `visibleSlides`, `peek`, `spacing`
 
+Use `mode="card"` to flip slides 180° around their central vertical axis instead of
+scrolling horizontally. `mode="classic"` is the default. Card mode resolves
+`visibleSlides`, `peek` and `spacing` to `1`, `0` and `0`: every slide occupies the
+same position. Supply cards or charts as ordinary children or through `data` and
+`renderItem`; data mode mounts only the faces involved in the current transition.
+
+```tsx
+<Carousel mode="card" infinite data={cards} renderItem={renderCard} />
+```
+
+An LTR swipe left advances; swipe right goes back (mirrored in RTL). Release after
+25% of the width to complete the flip; shorter drags return to the current card.
+`infinite` wraps swipes seamlessly. Without it, swipes stop at the ends; `loop`
+still wraps controls. Arrows, pagination, autoplay and ref methods use the same
+page model. A distant `goTo` uses one flip. Reduced motion or `animated: false`
+changes the card directly. For consistent sizing, give cards the same height or
+use `slideHeight="fill"` in a bounded container. Content-driven decks retain the
+largest measured face height as cards are visited.
+
 | Prop | What it does |
 | --- | --- |
 | `visibleSlides` | How many slides fit in the viewport at once. Paging moves a whole group, so 6 slides at `visibleSlides={2}` give **3 pages**, not 6. |

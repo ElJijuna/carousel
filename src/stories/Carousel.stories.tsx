@@ -193,6 +193,7 @@ const meta = {
   },
   argTypes: {
     ...structuralArgTypes,
+    mode: { control: 'select', options: ['classic', 'card'] },
     // `visibleSlides` and `peek` are `number | ResponsiveMap<number>`, which
     // Storybook can only offer as a JSON editor. Every story but `Responsive`
     // passes the plain number, so the number control is the useful one; the
@@ -222,6 +223,7 @@ const meta = {
   // row of empty "Set number" buttons. The callbacks are spies, which is what
   // puts every page change and drag in the Actions panel.
   args: {
+    mode: 'classic',
     onPageChanged: fn(),
     onDragStart: fn(),
     onDragEnd: fn(),
@@ -245,6 +247,71 @@ export const Basic: Story = {
     testID: 'carousel',
     components: { Dot: MockDot },
     children: mockSlides(4),
+  },
+};
+
+/** A stationary deck: every swipe reveals the next slide with a half turn. */
+export const Card: Story = {
+  args: {
+    mode: 'card',
+    infinite: true,
+    testID: 'carousel',
+    components: { Arrow: MockArrow, Dot: MockDot },
+    slots: { arrows: 'below' },
+    style: { maxWidth: 420, alignSelf: 'center' },
+    arrowsStyle: { marginTop: 12, marginBottom: 12 },
+    children: [
+      <View
+        key="summary"
+        style={{ height: 280, padding: 32, backgroundColor: palette.slideBg, borderRadius: 16 }}
+      >
+        <Text style={{ fontSize: 24, color: palette.ink }}>Monthly overview</Text>
+        <Text style={{ fontSize: 40, color: palette.accent, marginTop: 24 }}>$12,480</Text>
+        <Text style={{ color: palette.caption, marginTop: 16 }}>Swipe left to see the chart</Text>
+      </View>,
+      <View
+        key="chart"
+        style={{ height: 280, padding: 32, backgroundColor: palette.slideBg, borderRadius: 16 }}
+      >
+        <Text style={{ fontSize: 24, color: palette.ink }}>Revenue by month</Text>
+        <View
+          accessibilityLabel="Revenue: January 40, February 65, March 85, April 55"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'flex-end',
+            justifyContent: 'space-around',
+            height: 160,
+            marginTop: 16,
+          }}
+        >
+          {[40, 65, 85, 55].map((amount, index) => (
+            <View key={amount} style={{ alignItems: 'center' }}>
+              <View
+                style={{
+                  width: 36,
+                  height: amount * 1.4,
+                  backgroundColor: palette.accent,
+                  borderRadius: 4,
+                }}
+              />
+              <Text style={{ color: palette.caption, marginTop: 8 }}>
+                {['Jan', 'Feb', 'Mar', 'Apr'][index]}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>,
+      <View
+        key="outlook"
+        style={{ height: 280, padding: 32, backgroundColor: palette.slideBg, borderRadius: 16 }}
+      >
+        <Text style={{ fontSize: 24, color: palette.ink }}>Next month</Text>
+        <Text style={{ fontSize: 40, color: palette.accent, marginTop: 24 }}>+18%</Text>
+        <Text style={{ color: palette.caption, marginTop: 16 }}>
+          Keep swiping to return to the overview
+        </Text>
+      </View>,
+    ],
   },
 };
 

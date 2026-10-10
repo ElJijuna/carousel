@@ -22,10 +22,11 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-
+import { CardTrack } from './CardTrack';
 import { CarouselProvider } from './CarouselContext';
 import { SlideStoreProvider } from './CarouselSlideContext';
 import { useAutoPlay } from './hooks/useAutoPlay';
+import { useCardTransition } from './hooks/useCardTransition';
 import { useCarouselMetrics } from './hooks/useCarouselMetrics';
 import { useCarouselPage } from './hooks/useCarouselPage';
 import { useCarouselScroll } from './hooks/useCarouselScroll';
@@ -151,6 +152,7 @@ const isCloneAt = (renderedIndex: number, geometry: Geometry, slideCount: number
 
 function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandle>): ReactElement {
   const {
+    mode = 'classic',
     children,
     data,
     renderItem,
@@ -195,6 +197,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
   } = props;
 
   const resolvedBleed = Number.isFinite(bleed) ? Math.max(0, bleed) : 0;
+  const isCard = mode === 'card';
   const isVirtualized = data !== undefined;
   const childSlides = useMemo(
     () => (isVirtualized ? [] : Children.toArray(children)),
@@ -209,9 +212,9 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
 
   const { geometry, onLayout } = useCarouselMetrics({
     slideCount,
-    visibleSlides,
-    peek,
-    spacing,
+    visibleSlides: isCard ? 1 : visibleSlides,
+    peek: isCard ? 0 : peek,
+    spacing: isCard ? 0 : spacing,
     infinite,
   });
   const { pageCount, visibleSlides: visible, slideWidth, peek: resolvedPeek } = geometry;
@@ -252,6 +255,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
   );
 
   const bridge = useCarouselScroll({
+    enabled: !isCard,
     geometry,
     page,
     pageRef,
@@ -262,9 +266,36 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     onSnapStart,
     onSnapEnd,
   });
-  const { applyTarget, attachScroller } = bridge;
+  const { attachScroller } = bridge;
 
   const [isDragging, setIsDragging] = useState(false);
+  const handleCardDragging = useCallback(
+    (dragging: boolean) => {
+      setIsDragging(dragging);
+      if (dragging) {
+        onDragStart?.();
+      } else {
+        onDragEnd?.();
+      }
+    },
+    [onDragStart, onDragEnd],
+  );
+  const cardTransition = useCardTransition({
+    enabled: isCard,
+    infinite,
+    controlled: controlledPage !== undefined,
+    geometry,
+    page,
+    pageRef,
+    commitPage,
+    rtl,
+    reducedMotion,
+    onProgress: handleProgress,
+    onSnapStart,
+    onSnapEnd,
+    onDragging: handleCardDragging,
+  });
+  const applyTarget = isCard ? cardTransition.applyTarget : bridge.applyTarget;
 
   // ── Navigation ──────────────────────────────────────────────────────────────
 
@@ -593,7 +624,32 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     [geometry.slideStride, resolvedPeek],
   );
 
-  const track = isVirtualized ? (
+  const track = isCard ? (
+    <CardTrack
+      rtl={rtl}
+      slideKey={(index) =>
+        isVirtualized && keyExtractor ? keyExtractor(data[index] as TItem, index) : String(index)
+      }
+      transition={cardTransition}
+      slideCount={slideCount}
+      slideLabel={slideLabel}
+      fill={slideHeight === 'fill'}
+      style={trackStyle}
+      slideStyle={slideStyle}
+      testID={testID === undefined ? undefined : `${testID}-track`}
+      keyboardProps={IS_WEB ? { focusable: true, onKeyDown: handleKeyDown } : {}}
+      renderSlide={(index) =>
+        isVirtualized
+          ? renderItem?.({
+              item: data[index] as TItem,
+              index,
+              slideWidth,
+              isActive: trackActiveSlides ? index === page : false,
+            })
+          : childSlides[index]
+      }
+    />
+  ) : isVirtualized ? (
     <FlatList
       ref={attachScroller}
       data={renderedData as TItem[]}

@@ -38,6 +38,8 @@ export interface CarouselScroller {
 
 /** Inputs to {@link useCarouselScroll}. */
 export interface UseCarouselScrollOptions {
+  /** Disable the scroll engine when another track owns navigation. */
+  enabled?: boolean;
   /** Current layout numbers. */
   geometry: Geometry;
   /** The page being rendered. */
@@ -91,6 +93,7 @@ export interface CarouselScrollBridge {
  * and a button press all converge on the same state.
  */
 export function useCarouselScroll({
+  enabled = true,
   geometry,
   page,
   pageRef,
@@ -137,12 +140,16 @@ export function useCarouselScroll({
     animated: boolean;
   } | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: changing engines cancels pending scroll timers
   useEffect(
     () => () => {
       clearTimeout(programmaticTimerRef.current);
       clearTimeout(dragSettleTimerRef.current);
+      programmaticRef.current = false;
+      programmaticTargetRef.current = null;
+      snapActiveRef.current = false;
     },
-    [],
+    [enabled],
   );
 
   const scrollToLogical = useCallback(
@@ -291,17 +298,17 @@ export function useCarouselScroll({
   // container is resized or `visibleSlides` regroups, so the page the user was
   // looking at has to be re-found rather than left at a stale pixel offset.
   useEffect(() => {
-    if (geometry.pageStride <= 0) {
+    if (!enabled || geometry.pageStride <= 0) {
       return;
     }
     lastAppliedPageRef.current = pageRef.current;
     scrollToLogical(offsetForPage(pageRef.current, geometry), false);
-  }, [geometry, scrollToLogical, pageRef]);
+  }, [enabled, geometry, scrollToLogical, pageRef]);
 
   // Follow a controlled `page` prop. Skipped for pages the carousel moved to
   // itself, which is what keeps this from cancelling clone-page travel.
   useEffect(() => {
-    if (geometry.pageStride <= 0 || page === lastAppliedPageRef.current) {
+    if (!enabled || geometry.pageStride <= 0 || page === lastAppliedPageRef.current) {
       return;
     }
     lastAppliedPageRef.current = page;
@@ -321,7 +328,7 @@ export function useCarouselScroll({
     clearTimeout(programmaticTimerRef.current);
     programmaticTimerRef.current = setTimeout(settle, PROGRAMMATIC_SETTLE_MS);
     scrollToLogical(offset, animated);
-  }, [page, geometry, reducedMotion, scrollToLogical, settle]);
+  }, [enabled, page, geometry, reducedMotion, scrollToLogical, settle]);
 
   const onContentSizeChange = useCallback(() => {
     // `FlatList` ignores `scrollToOffset` until it has laid out content, so the

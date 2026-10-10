@@ -146,7 +146,10 @@ export interface CarouselProgressEvent {
    * page indices are everywhere else in this library.
    */
   absoluteProgress: number;
-  /** Raw scroll offset in dp, in the same direction-agnostic coordinates. */
+  /**
+   * Raw scroll offset in dp, in the same direction-agnostic coordinates.
+   * In card mode this is the equivalent virtual offset of the flip progress.
+   */
   offset: number;
 }
 
@@ -334,6 +337,14 @@ export interface CarouselSlideState {
  * @typeParam TItem - element type of `data` in the virtualized mode.
  */
 export interface CarouselProps<TItem = unknown> {
+  /**
+   * `classic` scrolls horizontally. `card` flips around the central vertical
+   * axis, showing one slide at a time; visibleSlides, peek and spacing are
+   * resolved to 1, 0 and 0 respectively. Data mode mounts only the two faces
+   * involved in a flip rather than a FlatList.
+   * @default 'classic'
+   */
+  mode?: 'classic' | 'card';
   // ── Slides ──
   /**
    * Slides as children. Every child is mounted at once, which is what you want
@@ -345,7 +356,7 @@ export interface CarouselProps<TItem = unknown> {
   /**
    * Slides as data. Switches the carousel to a virtualized `FlatList`, so a
    * list of hundreds of slides only ever mounts the few near the viewport.
-   * Requires `renderItem`.
+   * Requires `renderItem`. In card mode only the current transition's faces mount.
    */
   data?: readonly TItem[];
   /** Renders one slide in the `data` mode. */
