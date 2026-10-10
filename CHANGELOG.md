@@ -1,3 +1,13 @@
+## [1.0.0](https://github.com/ElJijuna/carousel/compare/v0.7.0...v1.0.0) (2026-10-10)
+
+### ⚠ BREAKING CHANGES
+
+* add card mode to Carousel for 3D flip transitions
+
+### Features
+
+* add card mode to Carousel for 3D flip transitions ([9b812bc](https://github.com/ElJijuna/carousel/commit/9b812bce722e0182cb7e7c2b917fc1607ff7f46c))
+
 ## [0.7.0](https://github.com/ElJijuna/carousel/compare/v0.6.0...v0.7.0) (2026-10-06)
 
 ### Features
