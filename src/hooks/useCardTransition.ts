@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Animated, PanResponder, type PanResponderInstance, Platform } from 'react-native';
+import { Animated, PanResponder, type PanResponderInstance } from 'react-native';
 
 import type { CarouselPageChangeSource } from '../types';
 import { clamp, type NavigationTarget, stepTarget } from '../utils/geometry';
@@ -158,7 +158,9 @@ export function useCardTransition(options: CardOptions): CardTransition {
       const animation = Animated.timing(angle, {
         toValue: accept ? current.direction : 0,
         duration: 320,
-        useNativeDriver: Platform.OS !== 'web',
+        // JS driver on purpose: on iOS (Fabric), faces driven natively are left at ±180° once they
+        // stop animating, so their hidden backface makes the card disappear after a flip.
+        useNativeDriver: false,
       });
       running.current = animation;
       animation.start(({ finished }) => {
