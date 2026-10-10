@@ -97,9 +97,9 @@
 		"access": "public"
 	},
 	"peerDependencies": {
+		"@testing-library/react-native": ">=12.4.0",
 		"react": ">=18.0.0",
-		"react-native": ">=0.74.0",
-		"@testing-library/react-native": ">=12.4.0"
+		"react-native": ">=0.74.0"
 	},
 	"devDependencies": {
 		"@babel/core": "^7.26.0",
@@ -136,7 +136,7 @@
 		"react-native-web": "^0.21.2",
 		"semantic-release": "^24.2.0",
 		"storybook": "^10.5.10",
-		"super-configs": "^1.25.1",
+		"super-configs": "^1.26.0",
 		"test-renderer": "^1.2.0",
 		"typedoc": "^0.28.0",
 		"typescript": "^5.9.0",
