@@ -16,6 +16,7 @@ export { DefaultDot, type DefaultDotProps } from './DefaultDot';
 export type {
   CarouselActions,
   CarouselArrowSlotProps,
+  CarouselAutoPlayState,
   CarouselComponents,
   CarouselContextValue,
   CarouselDotSlotProps,

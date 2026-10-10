@@ -40,6 +40,8 @@ export interface CarouselScroller {
 export interface UseCarouselScrollOptions {
   /** Disable the scroll engine when another track owns navigation. */
   enabled?: boolean;
+  /** A controlled owner may reject a requested page change. */
+  controlled?: boolean;
   /** Current layout numbers. */
   geometry: Geometry;
   /** The page being rendered. */
@@ -94,6 +96,7 @@ export interface CarouselScrollBridge {
  */
 export function useCarouselScroll({
   enabled = true,
+  controlled = false,
   geometry,
   page,
   pageRef,
@@ -131,6 +134,7 @@ export function useCarouselScroll({
   const lastAppliedPageRef = useRef(page);
   /** Set once the user touches the track, disabling the initial-anchor fixups. */
   const userScrolledRef = useRef(false);
+  const draggingRef = useRef(false);
   /**
    * Where a programmatic scroll is currently travelling, and how. Kept so the
    * move can be re-issued if the content changes size under it mid-flight.
@@ -147,7 +151,6 @@ export function useCarouselScroll({
       clearTimeout(dragSettleTimerRef.current);
       programmaticRef.current = false;
       programmaticTargetRef.current = null;
-      snapActiveRef.current = false;
     },
     [enabled],
   );
@@ -189,6 +192,7 @@ export function useCarouselScroll({
   }, []);
 
   const settle = useCallback(() => {
+    const wasProgrammatic = programmaticRef.current;
     programmaticRef.current = false;
     programmaticTargetRef.current = null;
     clearTimeout(programmaticTimerRef.current);
@@ -198,7 +202,17 @@ export function useCarouselScroll({
       return;
     }
     const resolved = pageFromOffset(currentOffsetRef.current, geometry);
-    commitPage(resolved.page, activeSourceRef.current);
+    if (!wasProgrammatic || resolved.page !== lastAppliedPageRef.current) {
+      commitPage(resolved.page, activeSourceRef.current);
+    }
+    if (wasProgrammatic && controlled && pageRef.current !== resolved.page) {
+      const offset = offsetForPage(pageRef.current, geometry);
+      currentOffsetRef.current = offset;
+      lastAppliedPageRef.current = pageRef.current;
+      scrollToLogical(offset, false);
+      endSnap();
+      return;
+    }
     lastAppliedPageRef.current = resolved.page;
     if (resolved.onClone) {
       // We are parked on a copy. Hop to the real page it duplicates without
@@ -207,7 +221,7 @@ export function useCarouselScroll({
       scrollToLogical(offsetForPage(resolved.page, geometry), false);
     }
     endSnap();
-  }, [geometry, commitPage, scrollToLogical, endSnap]);
+  }, [geometry, commitPage, scrollToLogical, endSnap, controlled, pageRef]);
 
   const applyTarget = useCallback(
     (target: NavigationTarget, animated: boolean, source: CarouselPageChangeSource) => {
@@ -224,6 +238,10 @@ export function useCarouselScroll({
       const withAnimation = animated && !reducedMotion;
       programmaticTargetRef.current = { offset, animated: withAnimation };
       scrollToLogical(offset, withAnimation);
+      if (!withAnimation) {
+        currentOffsetRef.current = offset;
+        settle();
+      }
     },
     [commitPage, settle, scrollToLogical, geometry, reducedMotion, beginSnap],
   );
@@ -231,6 +249,7 @@ export function useCarouselScroll({
   const onScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const logical = mirrorOffset(event.nativeEvent.contentOffset.x, geometry, rtl);
+      const moved = logical !== currentOffsetRef.current;
       currentOffsetRef.current = logical;
 
       if (geometry.pageStride > 0 && onProgressRef.current) {
@@ -242,8 +261,21 @@ export function useCarouselScroll({
         });
       }
 
-      if (programmaticRef.current || geometry.pageStride <= 0) {
+      if (geometry.pageStride <= 0) {
         return;
+      }
+      if (programmaticRef.current) {
+        // Web does not emit native momentum-end events. Wait for scroll idle
+        // instead of counting dwell time while the scroll is still moving.
+        clearTimeout(programmaticTimerRef.current);
+        programmaticTimerRef.current = setTimeout(settle, DRAG_SETTLE_MS);
+        return;
+      }
+      if (moved && !draggingRef.current) {
+        beginSnap();
+        activeSourceRef.current = 'drag';
+        clearTimeout(dragSettleTimerRef.current);
+        dragSettleTimerRef.current = setTimeout(settle, DRAG_SETTLE_MS);
       }
       // Commit mid-drag so the chrome tracks the finger. `commitPage` filters
       // this down to real transitions, so the per-frame scroll events cost one
@@ -253,7 +285,7 @@ export function useCarouselScroll({
         lastAppliedPageRef.current = next;
       }
     },
-    [geometry, rtl, commitPage],
+    [geometry, rtl, commitPage, beginSnap, settle],
   );
 
   const onMomentumScrollBegin = useCallback(() => {
@@ -272,6 +304,7 @@ export function useCarouselScroll({
   );
 
   const onScrollBeginDrag = useCallback(() => {
+    draggingRef.current = true;
     userScrolledRef.current = true;
     clearTimeout(dragSettleTimerRef.current);
     // A finger beats any programmatic scroll still in flight.
@@ -282,6 +315,7 @@ export function useCarouselScroll({
 
   const onScrollEndDrag = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      draggingRef.current = false;
       currentOffsetRef.current = mirrorOffset(event.nativeEvent.contentOffset.x, geometry, rtl);
       // The finger has let go: the track is now settling towards a page on its
       // own, whether that takes a momentum fling or the short timer below.
@@ -298,12 +332,16 @@ export function useCarouselScroll({
   // container is resized or `visibleSlides` regroups, so the page the user was
   // looking at has to be re-found rather than left at a stale pixel offset.
   useEffect(() => {
-    if (!enabled || geometry.pageStride <= 0) {
+    if (!enabled) {
+      endSnap();
+      return;
+    }
+    if (geometry.pageStride <= 0) {
       return;
     }
     lastAppliedPageRef.current = pageRef.current;
     scrollToLogical(offsetForPage(pageRef.current, geometry), false);
-  }, [enabled, geometry, scrollToLogical, pageRef]);
+  }, [enabled, geometry, scrollToLogical, pageRef, endSnap]);
 
   // Follow a controlled `page` prop. Skipped for pages the carousel moved to
   // itself, which is what keeps this from cancelling clone-page travel.
@@ -323,12 +361,17 @@ export function useCarouselScroll({
     // move as in flight, so a virtualized list mounting slides underneath it
     // re-issues the scroll instead of cutting it short.
     activeSourceRef.current = 'imperative';
+    beginSnap();
     programmaticRef.current = true;
     programmaticTargetRef.current = { offset, animated };
     clearTimeout(programmaticTimerRef.current);
     programmaticTimerRef.current = setTimeout(settle, PROGRAMMATIC_SETTLE_MS);
     scrollToLogical(offset, animated);
-  }, [enabled, page, geometry, reducedMotion, scrollToLogical, settle]);
+    if (!animated) {
+      currentOffsetRef.current = offset;
+      settle();
+    }
+  }, [enabled, page, geometry, reducedMotion, scrollToLogical, settle, beginSnap]);
 
   const onContentSizeChange = useCallback(() => {
     // `FlatList` ignores `scrollToOffset` until it has laid out content, so the

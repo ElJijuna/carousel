@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, AppState, type AppStateStatus, Easing } from 'react-native';
+
+import type { CarouselAutoPlayState } from '../types';
 
 /** Inputs to {@link useAutoPlay}. */
 export interface UseAutoPlayOptions {
@@ -9,6 +11,12 @@ export interface UseAutoPlayOptions {
   interval: number;
   /** Whether the user is dragging the track right now. */
   isDragging: boolean;
+  /** Logical page: a change restarts its dwell time. */
+  page?: number;
+  /** No clock is needed when there is no neighbouring page. */
+  pageCount?: number;
+  /** Wait until the track is at rest before counting visible time. */
+  isTransitioning?: boolean;
   /** Whether the OS requests reduced motion; suspends automatic rotation. */
   reducedMotion?: boolean;
   /** Called on each tick. Kept in a ref, so it need not be stable. */
@@ -17,8 +25,12 @@ export interface UseAutoPlayOptions {
 
 /** What {@link useAutoPlay} hands back. */
 export interface AutoPlayState {
+  autoPlayState: CarouselAutoPlayState;
+  /** User intent, retained while transitions temporarily suspend the clock. */
+  isRequested: boolean;
   /**
-   * Whether the rotation is running *right now* — false while paused by the
+   * Playback state for play/pause controls; remains true during transitions.
+   * False while paused by the
    * user, mid-drag, with reduced motion enabled, or with the app in the
    * background. This is what a play/pause control should render from.
    */
@@ -44,11 +56,20 @@ export function useAutoPlay({
   enabled,
   interval,
   isDragging,
+  page = 0,
+  pageCount = 2,
+  isTransitioning = false,
   reducedMotion = false,
   onTick,
 }: UseAutoPlayOptions): AutoPlayState {
   const [wanted, setWanted] = useState(enabled);
-  const [appActive, setAppActive] = useState(true);
+  const [appActive, setAppActive] = useState(
+    AppState.currentState !== 'background' && AppState.currentState !== 'inactive',
+  );
+  const [progress] = useState(() => new Animated.Value(0));
+  const [cycle, setCycle] = useState(0);
+  const elapsed = useRef(0);
+  const clockConfig = useRef({ enabled, interval, page, pageCount, cycle });
   const onTickRef = useRef(onTick);
 
   useEffect(() => {
@@ -78,19 +99,58 @@ export function useAutoPlay({
     };
   }, []);
 
-  const running = enabled && wanted && appActive && !isDragging && !reducedMotion;
+  const validDuration = Number.isFinite(interval) && interval > 0;
+  const isRequested = enabled && wanted && validDuration && pageCount > 1;
+  const playing = isRequested && appActive && !isDragging && !reducedMotion;
+  const running = playing && !isTransitioning;
 
   useEffect(() => {
-    if (!running || interval <= 0) {
+    const previous = clockConfig.current;
+    if (
+      previous.enabled !== enabled ||
+      previous.interval !== interval ||
+      previous.page !== page ||
+      previous.pageCount !== pageCount ||
+      previous.cycle !== cycle
+    ) {
+      elapsed.current = 0;
+      progress.setValue(0);
+      clockConfig.current = { enabled, interval, page, pageCount, cycle };
+    }
+    if (!running) {
       return;
     }
-    const id = setInterval(() => {
+    const startedAt = Date.now();
+    const alreadyElapsed = elapsed.current;
+    const remaining = Math.max(0, interval - alreadyElapsed);
+    const animation = Animated.timing(progress, {
+      toValue: 1,
+      duration: remaining,
+      easing: Easing.linear,
+      useNativeDriver: false,
+      isInteraction: false,
+    });
+    let completed = false;
+    animation.start();
+    // The deadline completes the value exactly, independent of frame cadence.
+    // It is the only place that advances: animation callbacks never navigate.
+    const id = setTimeout(() => {
+      completed = true;
+      elapsed.current = interval;
+      animation.stop();
+      progress.setValue(1);
       onTickRef.current();
-    }, interval);
+      setCycle((previousCycle) => previousCycle + 1);
+    }, remaining);
     return () => {
-      clearInterval(id);
+      clearTimeout(id);
+      animation.stop();
+      if (!completed) {
+        elapsed.current = Math.min(interval, Math.max(0, alreadyElapsed + Date.now() - startedAt));
+        progress.setValue(elapsed.current / interval);
+      }
     };
-  }, [running, interval]);
+  }, [running, enabled, interval, page, pageCount, cycle, progress]);
 
   const play = useCallback(() => {
     setWanted(true);
@@ -99,5 +159,15 @@ export function useAutoPlay({
     setWanted(false);
   }, []);
 
-  return { isPlaying: running, play, pause };
+  const autoPlayState = useMemo<CarouselAutoPlayState>(
+    () => ({
+      enabled,
+      isPlaying: running,
+      duration: validDuration ? interval : 0,
+      progress,
+    }),
+    [enabled, running, validDuration, interval, progress],
+  );
+
+  return { isPlaying: playing, isRequested, autoPlayState, play, pause };
 }

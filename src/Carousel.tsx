@@ -254,8 +254,19 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     [slideStore, visible, hasPeek, onProgress],
   );
 
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const handleSnapStart = useCallback(() => {
+    setIsTransitioning(true);
+    onSnapStart?.();
+  }, [onSnapStart]);
+  const handleSnapEnd = useCallback(() => {
+    setIsTransitioning(false);
+    onSnapEnd?.();
+  }, [onSnapEnd]);
+
   const bridge = useCarouselScroll({
     enabled: !isCard,
+    controlled: controlledPage !== undefined,
     geometry,
     page,
     pageRef,
@@ -263,8 +274,8 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     rtl,
     reducedMotion,
     onProgress: handleProgress,
-    onSnapStart,
-    onSnapEnd,
+    onSnapStart: handleSnapStart,
+    onSnapEnd: handleSnapEnd,
   });
   const { attachScroller } = bridge;
 
@@ -291,8 +302,8 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     rtl,
     reducedMotion,
     onProgress: handleProgress,
-    onSnapStart,
-    onSnapEnd,
+    onSnapStart: handleSnapStart,
+    onSnapEnd: handleSnapEnd,
     onDragging: handleCardDragging,
   });
   const applyTarget = isCard ? cardTransition.applyTarget : bridge.applyTarget;
@@ -366,11 +377,14 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
   // Rotation always wraps, even without `loop`: a deck that silently stops on
   // the last slide reads as broken rather than finished.
   const handleTick = useCallback(() => navigate(1, undefined, true, 'autoplay'), [navigate]);
-  const { isPlaying, play, pause } = useAutoPlay({
+  const { isPlaying, isRequested, autoPlayState, play, pause } = useAutoPlay({
     enabled: autoPlay,
     reducedMotion,
     interval,
     isDragging,
+    isTransitioning,
+    page,
+    pageCount,
     onTick: handleTick,
   });
 
@@ -419,11 +433,11 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
     }
     // Silent while a rotation is actually running — a carousel that speaks
     // every few seconds makes the screen unusable.
-    if (!statusLabel || pageCount <= 1 || isPlaying) {
+    if (!statusLabel || pageCount <= 1 || isRequested) {
       return;
     }
     AccessibilityInfo.announceForAccessibility(statusLabel(page, pageCount));
-  }, [page, pageCount, statusLabel, isPlaying]);
+  }, [page, pageCount, statusLabel, isRequested]);
 
   // ── Drag tracking ───────────────────────────────────────────────────────────
 
@@ -457,6 +471,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
       canGoPrevious,
       canGoNext,
       isPlaying,
+      autoPlayState,
       isDragging,
       next,
       previous,
@@ -474,6 +489,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
       canGoPrevious,
       canGoNext,
       isPlaying,
+      autoPlayState,
       isDragging,
       next,
       previous,
@@ -738,6 +754,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
   if (Pagination) {
     paginationNode = (
       <Pagination
+        autoPlayState={autoPlayState}
         page={page}
         pageCount={pageCount}
         goTo={goTo}
@@ -755,6 +772,7 @@ function CarouselImpl<TItem>(props: CarouselProps<TItem>, ref: Ref<CarouselHandl
       >
         {Array.from({ length: pageCount }, (_, index) => (
           <Dot
+            autoPlayState={autoPlayState}
             // The page index *is* the identity here: this is a fixed-length
             // row of interchangeable controls, one per page.
             // biome-ignore lint/suspicious/noArrayIndexKey: index is the identity

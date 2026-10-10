@@ -1,5 +1,5 @@
 import type { ComponentType, ReactElement, ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { Animated, StyleProp, ViewStyle } from 'react-native';
 
 // ─── Responsive values ────────────────────────────────────────────────────────
 
@@ -44,8 +44,22 @@ export interface CarouselNavigateOptions {
 
 // ─── Public state and actions ─────────────────────────────────────────────────
 
+/** Shared visible-time clock for autoplay indicators. */
+export interface CarouselAutoPlayState {
+  /** Whether the consumer enabled autoplay. */
+  enabled: boolean;
+  /** Whether the visible-time clock is currently running. */
+  isPlaying: boolean;
+  /** Visible time per page in milliseconds; zero for an invalid interval. */
+  duration: number;
+  /** Stable, read-only animation value from 0 to 1. Pausing retains its value. */
+  progress: Animated.Value;
+}
+
 /** Everything the carousel knows about where it currently is. */
 export interface CarouselState {
+  /** Temporal progress, separate from scroll/flip progress. */
+  autoPlayState: CarouselAutoPlayState;
   /** Zero-based index of the current page. */
   page: number;
   /** Total pages: `ceil(slideCount / visibleSlides)`, floored at 1. */
@@ -60,7 +74,7 @@ export interface CarouselState {
   canGoPrevious: boolean;
   /** Whether {@link CarouselActions.next} would move. */
   canGoNext: boolean;
-  /** Whether an `autoPlay` rotation is currently running. */
+  /** Playback state for controls, retained while transitions suspend the clock. */
   isPlaying: boolean;
   /** Whether the user is dragging the track right now. */
   isDragging: boolean;
@@ -198,6 +212,8 @@ export interface CarouselArrowSlotProps {
 
 /** Props handed to a single page-indicator dot. */
 export interface CarouselDotSlotProps {
+  /** Shared autoplay clock. Only the selected dot should display its progress. */
+  autoPlayState?: CarouselAutoPlayState;
   /** Zero-based page this dot represents. */
   index: number;
   /** Total pages. */
@@ -216,6 +232,8 @@ export interface CarouselDotSlotProps {
  * page — a fraction ("3 / 8"), a progress bar, a scrubber.
  */
 export interface CarouselPaginationSlotProps {
+  /** Shared autoplay clock, also available through useCarousel(). */
+  autoPlayState?: CarouselAutoPlayState;
   /** Current page index. */
   page: number;
   /** Total pages. */
@@ -466,7 +484,9 @@ export interface CarouselProps<TItem = unknown> {
    */
   autoPlay?: boolean;
   /**
-   * Milliseconds between automatic advances.
+   * Visible milliseconds per page, counted after the transition finishes.
+   * Pauses retain the remaining time. Changing interval restarts the clock.
+   * Non-finite or non-positive durations disable the clock.
    * @default 3000
    */
   interval?: number;

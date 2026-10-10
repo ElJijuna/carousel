@@ -1,10 +1,14 @@
 import type { StyleProp, ViewStyle } from 'react-native';
-import { Platform, Pressable, type PressableProps, StyleSheet, View } from 'react-native';
+import { Animated, Platform, Pressable, type PressableProps, StyleSheet, View } from 'react-native';
 
 import type { CarouselDotSlotProps } from './types';
 
 /** Slot props plus styles for the optional built-in page indicator. */
 export interface DefaultDotProps extends CarouselDotSlotProps {
+  /** Fill the selected indicator from the autoplay clock. @default true */
+  showAutoPlayProgress?: boolean;
+  /** Style for the autoplay fill. Its width is owned by the clock. */
+  progressStyle?: StyleProp<ViewStyle>;
   /** Style for the visual indicator, separate from its press target. */
   style?: StyleProp<ViewStyle>;
   /** Applied after style when this page is selected. */
@@ -23,6 +27,8 @@ const styles = StyleSheet.create({
   target: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   indicator: { width: 8, height: 8, borderRadius: 4, backgroundColor: INACTIVE_COLOR },
   selected: { backgroundColor: ACTIVE_COLOR },
+  progressTrack: { width: 32, overflow: 'hidden', backgroundColor: INACTIVE_COLOR },
+  progressFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: ACTIVE_COLOR },
 });
 
 /**
@@ -31,6 +37,9 @@ const styles = StyleSheet.create({
  */
 export function DefaultDot({
   selected,
+  autoPlayState,
+  showAutoPlayProgress = true,
+  progressStyle,
   onPress,
   accessibilityLabel,
   style,
@@ -42,6 +51,8 @@ export function DefaultDot({
   // aria-current is valid for a page button on web; selected state is native.
   const webState: { 'aria-current'?: 'page' } =
     Platform.OS === 'web' && selected ? { 'aria-current': 'page' } : {};
+  const showProgress =
+    selected && showAutoPlayProgress && autoPlayState?.enabled && autoPlayState.duration > 0;
   return (
     <Pressable
       {...webState}
@@ -55,8 +66,34 @@ export function DefaultDot({
     >
       <View
         accessible={false}
-        style={[styles.indicator, style, selected ? [styles.selected, selectedStyle] : null]}
-      />
+        {...(Platform.OS === 'web' ? { 'aria-hidden': true } : {})}
+        style={[
+          styles.indicator,
+          selected ? styles.selected : null,
+          showProgress ? styles.progressTrack : null,
+          style,
+          selected ? selectedStyle : null,
+        ]}
+      >
+        {showProgress && autoPlayState ? (
+          <Animated.View
+            accessible={false}
+            pointerEvents="none"
+            testID={testID === undefined ? undefined : `${testID}-progress`}
+            style={[
+              styles.progressFill,
+              progressStyle,
+              {
+                width: autoPlayState.progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%'],
+                  extrapolate: 'clamp',
+                }),
+              },
+            ]}
+          />
+        ) : null}
+      </View>
     </Pressable>
   );
 }

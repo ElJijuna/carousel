@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import { View } from 'react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Animated, View } from 'react-native';
 
 import { Carousel } from './Carousel';
 import { DefaultDot } from './DefaultDot';
@@ -57,4 +57,32 @@ it('allows line indicators without changing the button or its semantics', async 
   expect(screen.getByTestId('dot').children[0]).toHaveStyle({ width: 40, height: 3, opacity: 1 });
   expect(screen.getByTestId('dot')).toHaveStyle({ padding: 4 });
   expect(screen.getByTestId('dot').props.hitSlop).toBe(12);
+});
+
+it('fills the selected indicator from the shared clock and permits an opt-out', async () => {
+  const fillColor = 'red';
+  const progress = new Animated.Value(0);
+  const props = {
+    index: 0,
+    total: 3,
+    selected: true,
+    accessibilityLabel: 'Page 1',
+    onPress: jest.fn(),
+    autoPlayState: { enabled: true, isPlaying: true, duration: 1000, progress },
+  };
+  const view = await render(
+    <DefaultDot {...props} testID="dot" progressStyle={{ backgroundColor: fillColor }} />,
+  );
+  expect(screen.getByTestId('dot').children[0]).toHaveStyle({ width: 32, overflow: 'hidden' });
+  expect(screen.getByTestId('dot-progress')).toHaveStyle({ width: '0%', backgroundColor: 'red' });
+  await act(async () => {
+    progress.setValue(0.5);
+  });
+  expect(screen.getByTestId('dot-progress')).toHaveStyle({ width: '50%' });
+  expect(screen.getByRole('button', { name: 'Page 1', selected: true })).toBeTruthy();
+  await view.rerender(<DefaultDot {...props} testID="dot" showAutoPlayProgress={false} />);
+  expect(screen.queryByTestId('dot-progress')).toBeNull();
+  expect(screen.getByTestId('dot').children[0]).toHaveStyle({ width: 8 });
+  await view.rerender(<DefaultDot {...props} testID="dot" selected={false} />);
+  expect(screen.queryByTestId('dot-progress')).toBeNull();
 });

@@ -720,6 +720,86 @@ The rotation stops on its own while:
 - the app is in the background — otherwise the deck advances twenty pages behind a lock screen;
 - the user has pressed pause.
 
+`interval` is the visible time per page: its clock begins **after the scroll or
+card flip settles**. Pausing, dragging, backgrounding the app or enabling reduced
+motion freezes elapsed time. Resuming continues with the remaining time. A page
+change restarts the clock; a cancelled drag on the same page preserves it. Changing
+`interval` restarts the cycle with the new duration. Disabling autoplay clears its
+progress. Empty or single-page decks do not run a clock.
+
+### Autoplay progress indicators
+
+`DefaultDot` fills the selected indicator as a bar when autoplay is enabled:
+
+```tsx
+<Carousel
+  autoPlay
+  interval={4000}
+  components={{ Dot: DefaultDot, PlayPauseControl }}
+>
+  {slides}
+</Carousel>
+```
+
+Set `showAutoPlayProgress={false}` on `DefaultDot` to retain its usual selected
+appearance. `style` and `selectedStyle` style the track; `progressStyle` styles the
+fill. The clock owns the fill width. Buttons retain their accessible labels and
+selected state; the percentage is not announced on every frame.
+
+Custom `Dot` and `Pagination` slots receive `autoPlayState`. The same object is
+available from `useCarousel().autoPlayState`:
+
+```ts
+interface CarouselAutoPlayState {
+  enabled: boolean;
+  isPlaying: boolean;
+  duration: number;
+  progress: Animated.Value;
+}
+```
+
+`progress` is a stable, read-only value from `0` to `1` for the current page. Use
+it only on the selected indicator, and use `enabled` to choose whether to show a
+countdown. `autoPlayState.isPlaying` is false while the clock is suspended. The
+existing `useCarousel().isPlaying` retains playback intent during a transition,
+so a pause button can still stop it mid-move. `duration` is the
+interval in milliseconds, or zero when it is invalid. The optional slot field
+lets existing indicators continue working without changes.
+
+```tsx
+function MyDot({ selected, autoPlayState, onPress, accessibilityLabel }: CarouselDotSlotProps) {
+  const width = selected && autoPlayState?.enabled
+    ? autoPlayState.progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0%', '100%'],
+      })
+    : '0%';
+
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel}>
+      <View style={{ width: 40, height: 6, backgroundColor: '#cbd5e1' }}>
+        <Animated.View style={{ width, height: '100%', backgroundColor: '#2563eb' }} />
+      </View>
+    </Pressable>
+  );
+}
+```
+
+For a numeric value, subscribe in an effect and remove that listener on cleanup:
+
+```tsx
+useEffect(() => {
+  const id = progress.addListener(({ value }) => setPercent(Math.round(value * 100)));
+
+  return () => progress.removeListener(id);
+}, [progress]);
+```
+
+Do not mutate this value, start an animation on it, remove other consumers'
+listeners or attach it to a native-driver animation: the carousel owns its JS
+driver. Driving `Animated.View` styles does not rerender the carousel on each
+frame. This API measures time; `onProgress` still measures scroll/flip position.
+
 It **wraps at the end even without `loop`**, because a deck that silently stops on the last slide
 reads as broken rather than finished.
 
@@ -847,7 +927,7 @@ Full generated docs: `npm run docs` (TypeDoc → `docs/api`).
 | `defaultPage` | `number` | `0` | Starting page when uncontrolled. |
 | `onPageChanged` | `(page: number, event: CarouselPageChangeEvent) => void` | — | Fires once per actual change. |
 | `autoPlay` | `boolean` | `false` | Rotate automatically. |
-| `interval` | `number` | `3000` | Milliseconds between advances. |
+| `interval` | `number` | `3000` | Visible milliseconds per page, after each transition. |
 | `components` | `CarouselComponents` | `{}` | The chrome to render. |
 | `slots` | `CarouselSlotLayout` | `{}` | Where each slot goes. |
 | `paginationPlacement` | `"top" \| "bottom"` | `"bottom"` | Vertical edge for overlay pagination. |
@@ -927,7 +1007,7 @@ it as a slide.
 
 **Autoplay does not start.**
 It pauses while the app is backgrounded and while a drag is in progress. It also stops if
-`interval` is `0` or negative.
+`interval` is non-finite, `0` or negative, or when there is no neighbouring page.
 
 **`infinite` shows duplicated media.**
 That is the clone page. Use `loop` instead for slides that cannot be duplicated.

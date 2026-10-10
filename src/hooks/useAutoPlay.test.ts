@@ -38,9 +38,11 @@ const setup = async (overrides: Partial<UseAutoPlayOptions> = {}) => {
 it('advances on the interval', async () => {
   const { onTick } = await setup();
 
-  await act(async () => {
-    jest.advanceTimersByTime(3000);
-  });
+  for (let cycle = 0; cycle < 3; cycle += 1) {
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+  }
 
   expect(onTick).toHaveBeenCalledTimes(3);
 });
@@ -210,7 +212,7 @@ it('does not tick or report playing with reduced motion, even after play()', asy
   expect(result.current.isPlaying).toBe(false);
 });
 
-it('suspends rotation on a preference change and resumes with a fresh interval', async () => {
+it('suspends rotation on a preference change and resumes with the remaining time', async () => {
   const { result, onTick, rerender, initialProps } = await setup();
   await act(async () => {
     jest.advanceTimersByTime(500);
@@ -224,7 +226,7 @@ it('suspends rotation on a preference change and resumes with a fresh interval',
   await rerender({ ...initialProps, reducedMotion: false });
   expect(result.current.isPlaying).toBe(true);
   await act(async () => {
-    jest.advanceTimersByTime(999);
+    jest.advanceTimersByTime(499);
   });
   expect(onTick).not.toHaveBeenCalled();
   await act(async () => {
@@ -240,6 +242,151 @@ it('preserves a manual pause when reduced motion is turned off', async () => {
   });
   await rerender({ ...initialProps, reducedMotion: true });
   await rerender({ ...initialProps, reducedMotion: false });
+  expect(result.current.isPlaying).toBe(false);
+  await act(async () => {
+    jest.advanceTimersByTime(5000);
+  });
+  expect(onTick).not.toHaveBeenCalled();
+});
+
+it('freezes the public value and advances only after the remaining visible time', async () => {
+  const { result, onTick } = await setup();
+  const { progress } = result.current.autoPlayState;
+  const values: number[] = [];
+  const listener = progress.addListener(({ value }) => values.push(value));
+  await act(async () => {
+    jest.advanceTimersByTime(400);
+    result.current.pause();
+  });
+  expect(values.at(-1)).toBeCloseTo(0.4);
+  expect(result.current.autoPlayState).toMatchObject({
+    enabled: true,
+    isPlaying: false,
+    duration: 1000,
+  });
+  const pausedValue = values.at(-1);
+  await act(async () => {
+    jest.advanceTimersByTime(10_000);
+  });
+  expect(values.at(-1)).toBe(pausedValue);
+  await act(async () => {
+    result.current.play();
+  });
+  expect(result.current.autoPlayState.progress).toBe(progress);
+  await act(async () => {
+    jest.advanceTimersByTime(599);
+  });
+  expect(onTick).not.toHaveBeenCalled();
+  await act(async () => {
+    jest.advanceTimersByTime(1);
+  });
+  expect(onTick).toHaveBeenCalledTimes(1);
+  expect(values).toContain(1);
+  progress.removeListener(listener);
+});
+
+it('resets on page changes and waits for the transition to finish', async () => {
+  const { result, onTick, rerender, initialProps } = await setup();
+  const values: number[] = [];
+  const id = result.current.autoPlayState.progress.addListener(({ value }) => values.push(value));
+  await act(async () => {
+    jest.advanceTimersByTime(400);
+  });
+  await rerender({ ...initialProps, page: 1, isTransitioning: true });
+  expect(values.at(-1)).toBe(0);
+  await act(async () => {
+    jest.advanceTimersByTime(5000);
+  });
+  expect(onTick).not.toHaveBeenCalled();
+  expect(result.current.autoPlayState.isPlaying).toBe(false);
+  await rerender({ ...initialProps, page: 1, isTransitioning: false });
+  await act(async () => {
+    jest.advanceTimersByTime(999);
+  });
+  expect(onTick).not.toHaveBeenCalled();
+  await act(async () => {
+    jest.advanceTimersByTime(1);
+  });
+  expect(onTick).toHaveBeenCalledTimes(1);
+  result.current.autoPlayState.progress.removeListener(id);
+});
+
+it.each(['drag', 'background'] as const)('retains elapsed time during %s', async (reason) => {
+  const { onTick, rerender, initialProps } = await setup();
+  await act(async () => {
+    jest.advanceTimersByTime(350);
+  });
+  if (reason === 'drag') {
+    await rerender({ ...initialProps, isDragging: true });
+  } else {
+    await act(async () => {
+      appStateListener?.('background');
+    });
+  }
+  await act(async () => {
+    jest.advanceTimersByTime(3000);
+  });
+  if (reason === 'drag') {
+    await rerender(initialProps);
+  } else {
+    await act(async () => {
+      appStateListener?.('active');
+    });
+  }
+  await act(async () => {
+    jest.advanceTimersByTime(649);
+  });
+  expect(onTick).not.toHaveBeenCalled();
+  await act(async () => {
+    jest.advanceTimersByTime(1);
+  });
+  expect(onTick).toHaveBeenCalledTimes(1);
+});
+
+it('restarts on duration changes even while paused and clears progress when disabled', async () => {
+  const { result, onTick, rerender, initialProps } = await setup();
+  const values: number[] = [];
+  const { progress } = result.current.autoPlayState;
+  const id = progress.addListener(({ value }) => values.push(value));
+  await act(async () => {
+    jest.advanceTimersByTime(400);
+    result.current.pause();
+  });
+  await rerender({ ...initialProps, interval: 2000 });
+  expect(values.at(-1)).toBe(0);
+  expect(result.current.autoPlayState.duration).toBe(2000);
+  await act(async () => {
+    result.current.play();
+  });
+  await act(async () => {
+    jest.advanceTimersByTime(1999);
+  });
+  expect(onTick).not.toHaveBeenCalled();
+  await act(async () => {
+    jest.advanceTimersByTime(1);
+  });
+  expect(onTick).toHaveBeenCalledTimes(1);
+  await rerender({ ...initialProps, enabled: false });
+  expect(values.at(-1)).toBe(0);
+  expect(result.current.autoPlayState.progress).toBe(progress);
+  progress.removeListener(id);
+});
+
+it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+  'disables invalid duration %s',
+  async (interval) => {
+    const { result, onTick } = await setup({ interval });
+    expect(result.current.autoPlayState.duration).toBe(0);
+    expect(result.current.isPlaying).toBe(false);
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+    });
+    expect(onTick).not.toHaveBeenCalled();
+  },
+);
+
+it.each([0, 1])('does not run a clock with %s pages', async (pageCount) => {
+  const { result, onTick } = await setup({ pageCount });
   expect(result.current.isPlaying).toBe(false);
   await act(async () => {
     jest.advanceTimersByTime(5000);
