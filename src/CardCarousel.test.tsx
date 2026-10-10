@@ -7,6 +7,7 @@ import {
   PanResponder,
   type PanResponderCallbacks,
   type PanResponderGestureState,
+  StyleSheet,
   Text,
 } from 'react-native';
 
@@ -322,6 +323,35 @@ it('autoplay uses the card transition and fires once per page', async () => {
     1,
     expect.objectContaining({ source: 'autoplay', userInitiated: false }),
   );
+});
+
+it.each([
+  ['forward', -75],
+  ['back', 90],
+])('keeps the settled face upright when the native angle lags (%s)', async (_, dx) => {
+  // The native driver can deliver the final angle after the settled face is committed. A face
+  // left at ±180° with a hidden backface makes the whole card disappear.
+  let angle: Animated.Value | undefined;
+  const timing = jest.mocked(Animated.timing).getMockImplementation();
+  jest.mocked(Animated.timing).mockImplementation((value, config) => {
+    if (value instanceof Animated.Value) {
+      angle = value;
+    }
+    return timing?.(value, config) as Animated.CompositeAnimation;
+  });
+  await setup();
+  if (dx > 0) {
+    await swipe(-75);
+  }
+  await swipe(dx);
+  const settled = screen.getByTestId(`c-track-face-${dx > 0 ? 0 : 1}`);
+  await act(async () => {
+    angle?.setValue(dx > 0 ? 1 : -1);
+  });
+  expect(StyleSheet.flatten(settled.props.style).transform).toEqual([
+    { perspective: 1000 },
+    { rotateY: '0deg' },
+  ]);
 });
 
 it('hides the incoming face from interaction and accessibility before halfway', async () => {

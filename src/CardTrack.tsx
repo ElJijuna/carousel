@@ -10,6 +10,12 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   fillBack: { bottom: 0 },
 });
+/**
+ * A face at rest does not read the animated angle: with the native driver, the reset to 0 can
+ * reach the view before it is bound to its new interpolation, leaving it at ±180° (hidden
+ * backface), so the card disappears.
+ */
+const UPRIGHT = [{ perspective: 1000 }, { rotateY: '0deg' }];
 
 interface CardTrackProps {
   transition: CardTransition;
@@ -40,6 +46,7 @@ export function CardTrack({
   slideKey,
 }: CardTrackProps) {
   const { faces, angle, backVisible, panHandlers } = transition;
+  const turning = faces.back !== null;
   const [height, setHeight] = useState(0);
   const rotation = angle.interpolate({
     inputRange: [-1, 1],
@@ -92,7 +99,11 @@ export function CardTrack({
               fill ? styles.fill : null,
               back ? styles.back : null,
               back && fill ? styles.fillBack : null,
-              { transform: [{ perspective: 1000 }, { rotateY: back ? backRotation : rotation }] },
+              {
+                transform: turning
+                  ? [{ perspective: 1000 }, { rotateY: back ? backRotation : rotation }]
+                  : UPRIGHT,
+              },
             ]}
           >
             {renderSlide(index)}
