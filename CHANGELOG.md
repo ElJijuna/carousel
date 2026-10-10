@@ -1,3 +1,13 @@
+## [1.2.1](https://github.com/ElJijuna/carousel/compare/v1.2.0...v1.2.1) (2026-10-10)
+
+### Bug Fixes
+
+* use JS driver for animation to prevent card disappearance on iOS after flip ([3b17487](https://github.com/ElJijuna/carousel/commit/3b17487871a7c0751dabb9701e9002c7bd0a3c82))
+
+### Documentation
+
+* add new stories for Carousel component including Navigation, Recipes, and Transitions ([33a0e73](https://github.com/ElJijuna/carousel/commit/33a0e735af4cb9722ab395b6b3d81f4ae8624dbc))
+
 ## [1.2.0](https://github.com/ElJijuna/carousel/compare/v1.1.0...v1.2.0) (2026-10-10)
 
 ### Features
